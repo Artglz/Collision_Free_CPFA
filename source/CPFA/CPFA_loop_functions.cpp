@@ -896,6 +896,8 @@ bool CPFA_loop_functions::SetupPythonEnvironment(){
     // Copy the result to a C++ string
     std::string current_working_directory(cwd_str);
 
+	std::cout << cwd_str << std::endl;
+
     // Clean up Python objects
     Py_XDECREF(cwd);
     Py_XDECREF(getcwd_func);
@@ -906,7 +908,7 @@ bool CPFA_loop_functions::SetupPythonEnvironment(){
 	
 	PyObject *sys = PyImport_ImportModule("sys");
 	PyObject *path = PyObject_GetAttrString(sys, "path");
-	PyList_Append(path, PyUnicode_FromString(current_working_directory));
+	PyList_Append(path, PyUnicode_FromString(current_working_directory.c_str()));
 	PyObject *repr = PyObject_Repr(path);
 	const char* s = PyUnicode_AsUTF8(repr);
 	printf("Python path: ");
