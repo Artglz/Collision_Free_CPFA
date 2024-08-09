@@ -859,10 +859,54 @@ bool CPFA_loop_functions::SetupPythonEnvironment(){
 		return 0;	
 	}
 
+    // Import the os module
+    PyObject *os_module = PyImport_ImportModule("os");
+    if (!os_module) {
+	PyErr_Print();
+	throw std::runtime_error("Failed to import os module");
+    }
+
+    // Get the os.getcwd function
+    PyObject *getcwd_func = PyObject_GetAttrString(os_module, "getcwd");
+    if (!getcwd_func || !PyCallable_Check(getcwd_func)) {
+	PyErr_Print();
+	Py_XDECREF(os_module);
+	throw std::runtime_error("Failed to get os.getcwd function");
+    }
+
+    // Call the os.getcwd function
+    PyObject *cwd = PyObject_CallObject(getcwd_func, NULL);
+    if (!cwd) {
+	PyErr_Print();
+	Py_XDECREF(getcwd_func);
+	Py_XDECREF(os_module);
+	throw std::runtime_error("Failed to call os.getcwd function");
+    }
+
+    // Convert the result to a C string
+    const char *cwd_str = PyUnicode_AsUTF8(cwd);
+    if (!cwd_str) {
+	PyErr_Print();
+	Py_XDECREF(cwd);
+	Py_XDECREF(getcwd_func);
+	Py_XDECREF(os_module);
+	throw std::runtime_error("Failed to convert Python string to C string");
+    }
+
+    // Copy the result to a C++ string
+    std::string current_working_directory(cwd_str);
+
+    // Clean up Python objects
+    Py_XDECREF(cwd);
+    Py_XDECREF(getcwd_func);
+    Py_XDECREF(os_module);
+
+    // Finalize the Python interpreter
+    Py_Finalize();
 	
 	PyObject *sys = PyImport_ImportModule("sys");
 	PyObject *path = PyObject_GetAttrString(sys, "path");
-	PyList_Append(path, PyUnicode_FromString("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
+	PyList_Append(path, PyUnicode_FromString(current_working_directory));
 	PyObject *repr = PyObject_Repr(path);
 	const char* s = PyUnicode_AsUTF8(repr);
 	printf("Python path: ");
