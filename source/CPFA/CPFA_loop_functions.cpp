@@ -211,6 +211,80 @@ void CPFA_loop_functions::PreStep() {
     }
 }
 
+
+// Euclidean distance between two points
+double CPFA_loop_functions::euclideanDistance(double x1, double y1, double x2, double y2) {
+    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+}
+
+// Calculate sigmoid function
+double CPFA_loop_functions::sigmoid(double z) {
+    return 1.0 / (1.0 + exp(-z));
+}
+
+// Function to calculate features and predict congestion
+bool CPFA_loop_functions::predictCongestion(const std::vector<std::pair<double, double>>& coordinates) {
+    if (coordinates.size() != 50) {
+        std::cerr << "Error: Expected 50 (x, y) coordinates.\n";
+        return false;
+    }
+
+    // Load model parameters from JSON
+    std::ifstream file("logistic_model.json");
+    Json::Value modelParams;
+    file >> modelParams;
+
+    // Extract coefficients
+    double intercept = modelParams["intercept"].asDouble();
+    double coef_distance_ratio = modelParams["coefficients"][0].asDouble();
+    double coef_curvature = modelParams["coefficients"][1].asDouble();
+    double coef_average_velocity = modelParams["coefficients"][2].asDouble();
+
+    // Feature calculations
+    double distance_sum = 0.0;
+    double curvature_sum = 0.0;
+    double start_to_end_distance = euclideanDistance(coordinates.front().first, coordinates.front().second,
+                                                     coordinates.back().first, coordinates.back().second);
+
+    // Calculate distance_sum and curvature
+    for (size_t i = 0; i < coordinates.size() - 1; ++i) {
+        double segment_distance = euclideanDistance(coordinates[i].first, coordinates[i].second,
+                                                    coordinates[i + 1].first, coordinates[i + 1].second);
+        distance_sum += segment_distance;
+
+        if (i < coordinates.size() - 2) {
+            // Calculate angle change (curvature estimation)
+            double dx1 = coordinates[i + 1].first - coordinates[i].first;
+            double dy1 = coordinates[i + 1].second - coordinates[i].second;
+            double dx2 = coordinates[i + 2].first - coordinates[i + 1].first;
+            double dy2 = coordinates[i + 2].second - coordinates[i + 1].second;
+
+            double dot_product = dx1 * dx2 + dy1 * dy2;
+            double magnitude1 = sqrt(dx1 * dx1 + dy1 * dy1);
+            double magnitude2 = sqrt(dx2 * dx2 + dy2 * dy2);
+
+            double cos_angle = dot_product / (magnitude1 * magnitude2);
+            curvature_sum += acos(std::max(-1.0, std::min(1.0, cos_angle)));  // Clamp to [-1, 1] for safety
+        }
+    }
+
+    // Feature values
+    double distance_ratio = (start_to_end_distance != 0.0) ? distance_sum / start_to_end_distance : std::numeric_limits<double>::infinity();
+    double average_velocity = distance_sum / 50.0;  // Assuming uniform time steps
+    double curvature = curvature_sum / (coordinates.size() - 2);  // Average curvature
+
+    // Calculate the logistic regression probability
+    double z = intercept +
+               (coef_distance_ratio * distance_ratio) +
+               (coef_curvature * curvature) +
+               (coef_average_velocity * average_velocity);
+
+    double probability = sigmoid(z);
+
+    // Predict if the robot is congested
+    return probability >= 0.5;
+}
+
 void CPFA_loop_functions::PostStep() {
 	// get x,y coordinate of each robot
 	argos::CVector2 position;
@@ -291,6 +365,13 @@ void CPFA_loop_functions::PostStep() {
 			// it means the robot is moving towards the nest with a resource. Add its current position to the trajectory.
 			if(temp_trajectories.count(c2.GetId()) > 0) {
 				temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
+				if (temp_trajectories.count(c2.GetId()) % 50 == 0){
+					bool drop = predictCongestion(temp_trajectories[c2.GetId()])
+					if(drop){
+						dropResource(c2.GetId());
+					}
+					temp_trajectories[c2.GetId()] = empty(reset it)
+				}	
 			}
 		}
 	}
@@ -298,13 +379,7 @@ void CPFA_loop_functions::PostStep() {
 		collision_history.push_back(collision_count);
 	}
 	
-	// for (auto const& pair : dropped_trajectories) {
-	// 	argos::LOG << "Robot " << pair.first << " trajectory: ";
-	// 	for (const auto& pos : pair.second) {
-	// 		argos::LOG << "(" << pos.GetX() << ", " << pos.GetY() << "), ";
-	// 	}
-	// 	argos::LOG << std::endl;
-	// }	
+
 }
 
 bool CPFA_loop_functions::IsExperimentFinished() {
