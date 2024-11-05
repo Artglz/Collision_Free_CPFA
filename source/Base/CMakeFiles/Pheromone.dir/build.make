@@ -216,8 +216,6 @@ source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libGLU.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libglut.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libXmu.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libXi.so
-source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libQt5Widgets.so.5.9.5
-source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libQt5Gui.so.5.9.5
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/liblua5.3.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libm.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libdl.so
@@ -229,6 +227,8 @@ source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libGLU.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libglut.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libXmu.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libXi.so
+source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libQt5Widgets.so.5.9.5
+source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libQt5Gui.so.5.9.5
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/liblua5.3.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libm.so
 source/Base/libPheromone.so: /usr/lib/x86_64-linux-gnu/libQt5Core.so.5.9.5

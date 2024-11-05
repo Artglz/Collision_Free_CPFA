@@ -191,7 +191,8 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		bool DetectIntersection(const std::vector<CVector2>& trajectory1, const std::vector<CVector2>& trajectory2);
 
 		double sigmoid(double z);
-		bool predictCongestion(double distance_ratio, double curvature, double average_velocity)
+		double euclideanDistance(double x1, double y1, double x2, double y2);
+		bool predictCongestion(const std::vector<argos::CVector2>& coordinates);
 		// Function to adjust path to avoid collisions
 		//void AdjustPath();
     	void AdjustPath(std::vector<std::vector<CVector2>>& predicted_trajectories, const std::vector<CollisionInfo>& collisions);

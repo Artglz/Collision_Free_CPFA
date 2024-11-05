@@ -1,6 +1,5 @@
-
 ###############################################
-# define shared object files
+# Define shared object files
 ###############################################
 
 add_library(CPFA_loop_functions SHARED CPFA_loop_functions.h
@@ -14,13 +13,14 @@ add_library(CPFA_controller     SHARED CPFA_controller.h
                                        CPFA_loop_functions.cpp)
 
 ###############################################
-# link shared object files to dependencies
+# Link shared object files to dependencies
 ###############################################
 
 target_link_libraries(CPFA_controller
                       BaseController
                       Pheromone
-                      Nest)
+                      Nest
+                      jsoncpp_lib)  # Added jsoncpp_lib here
 
 target_link_libraries(CPFA_loop_functions
                       CPFA_controller
@@ -30,4 +30,8 @@ target_link_libraries(CPFA_loop_functions
                       argos3plugin_simulator_genericrobot
                       argos3plugin_simulator_qtopengl
                       ${ARGOS_QTOPENGL_LIBRARIES}
-                      ${PYTHON_LIBRARIES})
+                      ${PYTHON_LIBRARIES}
+                      jsoncpp_lib)  # Added jsoncpp_lib here if needed
+
+# Find JSONCPP
+find_package(jsoncpp REQUIRED)

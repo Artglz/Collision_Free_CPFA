@@ -223,14 +223,20 @@ double CPFA_loop_functions::sigmoid(double z) {
 }
 
 // Function to calculate features and predict congestion
-bool CPFA_loop_functions::predictCongestion(const std::vector<std::pair<double, double>>& coordinates) {
+bool CPFA_loop_functions::predictCongestion(const std::vector<argos::CVector2>& coordinates) {
+    // Check that the number of coordinates is 50
     if (coordinates.size() != 50) {
-        std::cerr << "Error: Expected 50 (x, y) coordinates.\n";
+        std::cerr << "Error: Expected 50 (x, y) coordinates, but got " << coordinates.size() << ".\n";
         return false;
     }
 
     // Load model parameters from JSON
     std::ifstream file("logistic_model.json");
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open logistic_model.json.\n";
+        return false;
+    }
+
     Json::Value modelParams;
     file >> modelParams;
 
@@ -243,28 +249,34 @@ bool CPFA_loop_functions::predictCongestion(const std::vector<std::pair<double, 
     // Feature calculations
     double distance_sum = 0.0;
     double curvature_sum = 0.0;
-    double start_to_end_distance = euclideanDistance(coordinates.front().first, coordinates.front().second,
-                                                     coordinates.back().first, coordinates.back().second);
+    double start_to_end_distance = euclideanDistance(
+        coordinates.front().GetX(), coordinates.front().GetY(),
+        coordinates.back().GetX(), coordinates.back().GetY()
+    );
 
     // Calculate distance_sum and curvature
     for (size_t i = 0; i < coordinates.size() - 1; ++i) {
-        double segment_distance = euclideanDistance(coordinates[i].first, coordinates[i].second,
-                                                    coordinates[i + 1].first, coordinates[i + 1].second);
+        double segment_distance = euclideanDistance(
+            coordinates[i].GetX(), coordinates[i].GetY(),
+            coordinates[i + 1].GetX(), coordinates[i + 1].GetY()
+        );
         distance_sum += segment_distance;
 
         if (i < coordinates.size() - 2) {
             // Calculate angle change (curvature estimation)
-            double dx1 = coordinates[i + 1].first - coordinates[i].first;
-            double dy1 = coordinates[i + 1].second - coordinates[i].second;
-            double dx2 = coordinates[i + 2].first - coordinates[i + 1].first;
-            double dy2 = coordinates[i + 2].second - coordinates[i + 1].second;
+            double dx1 = coordinates[i + 1].GetX() - coordinates[i].GetX();
+            double dy1 = coordinates[i + 1].GetY() - coordinates[i].GetY();
+            double dx2 = coordinates[i + 2].GetX() - coordinates[i + 1].GetX();
+            double dy2 = coordinates[i + 2].GetY() - coordinates[i + 1].GetY();
 
             double dot_product = dx1 * dx2 + dy1 * dy2;
             double magnitude1 = sqrt(dx1 * dx1 + dy1 * dy1);
             double magnitude2 = sqrt(dx2 * dx2 + dy2 * dy2);
 
-            double cos_angle = dot_product / (magnitude1 * magnitude2);
-            curvature_sum += acos(std::max(-1.0, std::min(1.0, cos_angle)));  // Clamp to [-1, 1] for safety
+            if (magnitude1 > 0 && magnitude2 > 0) {
+                double cos_angle = dot_product / (magnitude1 * magnitude2);
+                curvature_sum += acos(std::max(-1.0, std::min(1.0, cos_angle)));  // Clamp to [-1, 1] for safety
+            }
         }
     }
 
@@ -279,7 +291,7 @@ bool CPFA_loop_functions::predictCongestion(const std::vector<std::pair<double, 
                (coef_curvature * curvature) +
                (coef_average_velocity * average_velocity);
 
-    double probability = sigmoid(z);
+    double probability = sigmoid(z); // Make sure sigmoid function is defined
 
     // Predict if the robot is congested
     return probability >= 0.5;
@@ -365,13 +377,17 @@ void CPFA_loop_functions::PostStep() {
 			// it means the robot is moving towards the nest with a resource. Add its current position to the trajectory.
 			if(temp_trajectories.count(c2.GetId()) > 0) {
 				temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
-				if (temp_trajectories.count(c2.GetId()) % 50 == 0){
-					bool drop = predictCongestion(temp_trajectories[c2.GetId()])
-					if(drop){
-						dropResource(c2.GetId());
+
+				// Check congestion every 50 positions in the trajectory
+				if(temp_trajectories[c2.GetId()].size() % 50 == 0) {
+					bool drop = predictCongestion(temp_trajectories[c2.GetId()]);
+					if(drop) {
+						dropResource(c2.GetId()); // Trigger resource drop if congested
+						// dropped_trajectories[c2.GetId()].push_back(temp_trajectories[c2.GetId()]); // Store trajectory
+						// counter_nest_history.push_back(counter_nest); // Record the nest counter
+						temp_trajectories[c2.GetId()].clear(); // Reset trajectory
 					}
-					temp_trajectories[c2.GetId()] = empty(reset it)
-				}	
+				}
 			}
 		}
 	}
