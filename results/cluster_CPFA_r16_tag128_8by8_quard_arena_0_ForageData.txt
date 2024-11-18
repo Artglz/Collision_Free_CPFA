@@ -311,3 +311,7 @@ Forage: 4, 7, 5, 3
 Forage: 3, 6, 4, 7
 Forage: 4, 3, 5, 7
 Forage: 3, 6, 7, 5
+Forage: 2, 4, 6, 5
+Forage: 1, 4, 5, 4
+Forage: 1, 4, 4, 5
+Forage: 2, 5, 4, 6

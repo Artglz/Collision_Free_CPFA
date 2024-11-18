@@ -131,7 +131,7 @@ void CPFA_loop_functions::Init(argos::TConfigurationNode &node) {
   
 	ForageList.clear(); 
 	last_time_in_minutes=0;
-	SetupPythonEnvironment();
+	// SetupPythonEnvironment();
  
 }
 
@@ -223,87 +223,101 @@ double CPFA_loop_functions::sigmoid(double z) {
 }
 
 // Function to calculate features and predict congestion
-bool CPFA_loop_functions::predictCongestion(const std::vector<argos::CVector2>& coordinates) {
-    // Check that the number of coordinates is 50
-    if (coordinates.size() != 50) {
-        std::cerr << "Error: Expected 50 (x, y) coordinates, but got " << coordinates.size() << ".\n";
+bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index, const std::vector<argos::CVector2>& coordinates) {
+    // Validate indices
+    if (start_index >= end_index || end_index >= coordinates.size() || coordinates.size() < 50) {
+        std::cerr << "Error: Invalid indices or insufficient coordinates (expected at least 50).\n";
         return false;
     }
-
     // Load model parameters from JSON
-    std::ifstream file("logistic_model.json");
+    std::ifstream file("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/logistic_model.json");
     if (!file.is_open()) {
         std::cerr << "Error: Could not open logistic_model.json.\n";
         return false;
     }
-
     Json::Value modelParams;
     file >> modelParams;
 
+	// if (!modelParams["intercept"].isDouble()) {
+	// 	std::cerr << "Error: 'intercept' is not a double. Value: " << modelParams["intercept"] << std::endl;
+	// }
     // Extract coefficients
-    double intercept = modelParams["intercept"].asDouble();
-    double coef_distance_ratio = modelParams["coefficients"][0].asDouble();
-    double coef_curvature = modelParams["coefficients"][1].asDouble();
-    double coef_average_velocity = modelParams["coefficients"][2].asDouble();
+    double intercept = modelParams["intercept"][0].asDouble();
+    double coef_start_index = modelParams["coefficients"][0].asDouble();
+    double coef_end_index = modelParams["coefficients"][1].asDouble();
+    double coef_ratio_distance = modelParams["coefficients"][2].asDouble();
+    double coef_angle = modelParams["coefficients"][3].asDouble();
 
-    // Feature calculations
-    double distance_sum = 0.0;
-    double curvature_sum = 0.0;
+    // Calculate optimal distance based on a constant velocity (e.g., 0.08 units per step)
+    double optimal_distance = 0.08 * (end_index - start_index);
+
+    // Calculate start-to-end distance
     double start_to_end_distance = euclideanDistance(
-        coordinates.front().GetX(), coordinates.front().GetY(),
-        coordinates.back().GetX(), coordinates.back().GetY()
+        coordinates[start_index].GetX(), coordinates[start_index].GetY(),
+        coordinates[end_index].GetX(), coordinates[end_index].GetY()
     );
 
-    // Calculate distance_sum and curvature
-    for (size_t i = 0; i < coordinates.size() - 1; ++i) {
-        double segment_distance = euclideanDistance(
-            coordinates[i].GetX(), coordinates[i].GetY(),
-            coordinates[i + 1].GetX(), coordinates[i + 1].GetY()
-        );
-        distance_sum += segment_distance;
+    // Calculate ratio_distance
+    double ratio_distance = (optimal_distance != 0) ? start_to_end_distance / optimal_distance : std::numeric_limits<double>::infinity();
 
-        if (i < coordinates.size() - 2) {
-            // Calculate angle change (curvature estimation)
-            double dx1 = coordinates[i + 1].GetX() - coordinates[i].GetX();
-            double dy1 = coordinates[i + 1].GetY() - coordinates[i].GetY();
-            double dx2 = coordinates[i + 2].GetX() - coordinates[i + 1].GetX();
-            double dy2 = coordinates[i + 2].GetY() - coordinates[i + 1].GetY();
-
-            double dot_product = dx1 * dx2 + dy1 * dy2;
-            double magnitude1 = sqrt(dx1 * dx1 + dy1 * dy1);
-            double magnitude2 = sqrt(dx2 * dx2 + dy2 * dy2);
-
-            if (magnitude1 > 0 && magnitude2 > 0) {
-                double cos_angle = dot_product / (magnitude1 * magnitude2);
-                curvature_sum += acos(std::max(-1.0, std::min(1.0, cos_angle)));  // Clamp to [-1, 1] for safety
-            }
-        }
+    // Calculate angle using the angle calculator logic
+    if (end_index - start_index < 3) {
+        std::cerr << "Error: Insufficient points to calculate angles.\n";
+        return false; // Need at least 3 points for angle calculation
     }
 
-    // Feature values
-    double distance_ratio = (start_to_end_distance != 0.0) ? distance_sum / start_to_end_distance : std::numeric_limits<double>::infinity();
-    double average_velocity = distance_sum / 50.0;  // Assuming uniform time steps
-    double curvature = curvature_sum / (coordinates.size() - 2);  // Average curvature
+    size_t middle_index = (start_index + end_index) / 2;
+    argos::CVector2 p1 = coordinates[start_index];
+    argos::CVector2 p2 = coordinates[middle_index];
+    argos::CVector2 p3 = coordinates[end_index];
 
-    // Calculate the logistic regression probability
+    // Vectors
+    double dx1 = p2.GetX() - p1.GetX();
+    double dy1 = p2.GetY() - p1.GetY();
+    double dx2 = p3.GetX() - p2.GetX();
+    double dy2 = p3.GetY() - p2.GetY();
+
+    // Dot product and magnitudes
+    double dot_product = dx1 * dx2 + dy1 * dy2;
+    double mag_v1 = sqrt(dx1 * dx1 + dy1 * dy1);
+    double mag_v2 = sqrt(dx2 * dx2 + dy2 * dy2);
+
+    double angle = 0.0;
+    if (mag_v1 > 0 && mag_v2 > 0) {
+        double cosine_angle = dot_product / (mag_v1 * mag_v2);
+        cosine_angle = std::clamp(cosine_angle, -1.0, 1.0); // Clamp for stability
+        angle = acos(cosine_angle) * (180.0 / M_PI); // Convert to degrees
+    }
+
+    // Logistic regression probability
     double z = intercept +
-               (coef_distance_ratio * distance_ratio) +
-               (coef_curvature * curvature) +
-               (coef_average_velocity * average_velocity);
+               (coef_start_index * static_cast<double>(start_index)) +
+               (coef_end_index * static_cast<double>(end_index)) +
+               (coef_ratio_distance * ratio_distance) +
+               (coef_angle * angle);
 
-    double probability = sigmoid(z); // Make sure sigmoid function is defined
+    double probability = sigmoid(z); // Ensure sigmoid function is defined
 
     // Predict if the robot is congested
     return probability >= 0.5;
 }
 
+// drop resource function
+void CPFA_loop_functions::dropResource(string robot_id) {
+	argos::LOG << "Robot " << robot_id << " has dropped a resource due to congestion." << std::endl;
+}
+
+
 void CPFA_loop_functions::PostStep() {
+
 	// get x,y coordinate of each robot
 	argos::CVector2 position;
 	vector<argos::CVector2> robotPosList2;
 	argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
 	//dictionary that holds the robot id as a key and the trajectory of the robot that has dropped a resource up to the last 50 values.
 	//std::map<std::string, std::vector<argos::CVector2>> dropped_trajectories;
+	const size_t WINDOW_SIZE = 300;
+	const size_t STEP_SIZE = 100;
 
 	robotPosList.clear();
 	//robotPosList2.clear();
@@ -356,13 +370,13 @@ void CPFA_loop_functions::PostStep() {
 		// 	counter_nest_history.push_back(counter_nest);
 		// }
 		if(c2.GetStatus() == "FOUND"){
-			argos::LOG << "Robot " << c2.GetId() << " has found a resource" << std::endl;
+			// argos::LOG << "Robot " << c2.GetId() << " has found a resource" << std::endl;
 			temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
 		}
 		else if(c2.GetStatus() == "DROPPED"){
 			dropped_resource = true;
 			std::vector<argos::CVector2> traj;
-			argos::LOG << "Robot " << c2.GetId() << " has dropped a resource" << std::endl;			
+			// argos::LOG << "Robot " << c2.GetId() << " has dropped a resource" << std::endl;			
 			// for (const auto& pos : temp_trajectories[c2.GetId()]) {
 			// 	argos::LOG << "(" << pos.GetX() << ", " << pos.GetY() << "), ";
 			// }
@@ -377,15 +391,18 @@ void CPFA_loop_functions::PostStep() {
 			// it means the robot is moving towards the nest with a resource. Add its current position to the trajectory.
 			if(temp_trajectories.count(c2.GetId()) > 0) {
 				temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
-
+				size_t trajectory_size = temp_trajectories[c2.GetId()].size();
 				// Check congestion every 50 positions in the trajectory
-				if(temp_trajectories[c2.GetId()].size() % 50 == 0) {
-					bool drop = predictCongestion(temp_trajectories[c2.GetId()]);
-					if(drop) {
-						dropResource(c2.GetId()); // Trigger resource drop if congested
-						// dropped_trajectories[c2.GetId()].push_back(temp_trajectories[c2.GetId()]); // Store trajectory
-						// counter_nest_history.push_back(counter_nest); // Record the nest counter
-						temp_trajectories[c2.GetId()].clear(); // Reset trajectory
+				if (trajectory_size >= WINDOW_SIZE && (trajectory_size - WINDOW_SIZE) % STEP_SIZE == 0) {
+					// Determine the start and end indices for the current window
+					size_t start_index = trajectory_size - WINDOW_SIZE;
+					size_t end_index = trajectory_size - 1;
+
+					// Call predictCongestion with the windowed trajectory
+					bool drop = predictCongestion(start_index, end_index, temp_trajectories[c2.GetId()]);
+
+					if (drop) {
+						dropResource(c2.GetId());
 					}
 				}
 			}

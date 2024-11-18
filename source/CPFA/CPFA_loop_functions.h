@@ -190,9 +190,13 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 
 		bool DetectIntersection(const std::vector<CVector2>& trajectory1, const std::vector<CVector2>& trajectory2);
 
+		// These are the main functions from my machine learning algorithm
 		double sigmoid(double z);
 		double euclideanDistance(double x1, double y1, double x2, double y2);
-		bool predictCongestion(const std::vector<argos::CVector2>& coordinates);
+		bool predictCongestion(size_t start_index, size_t end_index, const std::vector<argos::CVector2>& coordinates);
+		void dropResource(std::string robot_id);
+
+
 		// Function to adjust path to avoid collisions
 		//void AdjustPath();
     	void AdjustPath(std::vector<std::vector<CVector2>>& predicted_trajectories, const std::vector<CollisionInfo>& collisions);
