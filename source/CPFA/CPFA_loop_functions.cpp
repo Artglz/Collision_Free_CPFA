@@ -392,18 +392,18 @@ void CPFA_loop_functions::PostStep() {
 			if(temp_trajectories.count(c2.GetId()) > 0) {
 				temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
 				size_t trajectory_size = temp_trajectories[c2.GetId()].size();
-				// Check congestion every 50 positions in the trajectory
+				// Check congestion every x positions in the trajectory
 				if (trajectory_size >= WINDOW_SIZE && (trajectory_size - WINDOW_SIZE) % STEP_SIZE == 0) {
 					// Determine the start and end indices for the current window
 					size_t start_index = trajectory_size - WINDOW_SIZE;
 					size_t end_index = trajectory_size - 1;
 
 					// Call predictCongestion with the windowed trajectory
-					bool drop = predictCongestion(start_index, end_index, temp_trajectories[c2.GetId()]);
-
-					if (drop) {
-						dropResource(c2.GetId());
-					}
+					// bool drop = predictCongestion(start_index, end_index, temp_trajectories[c2.GetId()]);
+					// c2.SetCongestion(drop);
+					// if (drop) {
+					// 	argos::LOG << "Robot " << c2.GetId() << " has dropped a resource due to congestion." << std::endl;
+					// }
 				}
 			}
 		}

@@ -47,6 +47,8 @@ class CPFA_controller : public BaseController {
   Real curr_time_in_seconds; 
     Real last_time_in_seconds; 
         
+		void SetCongestion(bool value);
+		std::vector<argos::CVector2> CongestionDropList;
 
 	private:
   string 			controllerID;//qilu 07/26/2016
@@ -117,12 +119,17 @@ class CPFA_controller : public BaseController {
 		argos::Real GetPoissonCDF(argos::Real k, argos::Real lambda);
 
 		void UpdateTargetRayList();
-  
+
+		
+		bool IsInCongestion();
+
 		CVector2 previous_position;
 
 		string results_path;
 		string results_full_path;
 		bool isUsingPheromone;
+
+		bool isCongested;
 
 		unsigned int survey_count;
 		/* Pointer to the LEDs actuator */
