@@ -5,7 +5,7 @@
   <!-- ************************* -->
   <framework>
     <system threads="0"/>
-    <experiment length="1200" random_seed="0" ticks_per_second="32"/>
+    <experiment length="10" random_seed="1" ticks_per_second="32"/>
   </framework>
 
   <!-- *************** -->
@@ -114,15 +114,15 @@ VaryForwardSpeedFlag = "0" NumOfBranches = "4"/>
   <!-- ****************** -->
 
 
- <visualization>
-
-<qt-opengl>
+  <visualization>
+    <qt-opengl>
       <camera>
-        <placement idx="0" position="0,0,13" look_at="0,0,0" up="1,0,0" lens_focal_length="20"/>
+        <placements>
+          <placement index="0" position="0,0,13" look_at="0,0,0" up="1,0,0" lens_focal_length="35"/>
+        </placements>
       </camera>
-      <user_functions label="CPFA_qt_user_functions"/>
+    <user_functions label="CPFA_qt_user_functions"/>
     </qt-opengl>
+  </visualization> 
 
-  </visualization>
--->
 </argos-configuration>

@@ -760,7 +760,19 @@ void CPFA_controller::Returning() {
 
             // Log the drop due to congestion
             argos::LOG << "Resource dropped due to congestion at: " << dropPosition << std::endl;
-        }
+        } else{
+			// 🚨 Instead of searching immediately, the robot surveys its surroundings first
+			//argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Surveying before deciding where to go." << std::endl;
+
+			// CPFA_state = SURVEYING;
+			// survey_count = 0;  // Reset survey timer	
+
+			// 🚨 If the robot is in congestion but has no food, resume searching
+			argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
+
+			CPFA_state = SEARCHING;
+			SetRandomSearchLocation();
+		}
     }
     else {
         // If not in the nest or congestion, proceed towards the target
