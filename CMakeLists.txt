@@ -34,8 +34,8 @@ link_libraries(${ARGOS_LDFLAGS})
 
 
 # find python package
-find_package(PythonLibs REQUIRED)
-include_directories(${PYTHON_INCLUDE_DIRS})
+#find_package(PythonLibs REQUIRED)
+#include_directories(${PYTHON_INCLUDE_DIRS})
 
 # Check for required libraries to compile code depending on Qt and OpenGL.
 # include(ARGoSCheckQTOpenGL)

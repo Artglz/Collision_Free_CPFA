@@ -15,7 +15,7 @@
 
 #pragma push_macro("slots")
 #undef slots
-#include "Python.h"
+// #include "Python.h"
 #pragma pop_macro("slots")
 
 using namespace argos;
@@ -207,8 +207,8 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		bool IsCollidingWithFood(argos::CVector2 p);
 		double score;
 		int PrintFinalScore;
-		PyObject *pyFileName, *pyModule;
-		PyObject *pyCongestion,	*pyCallCongestion,	*pyCongestionArgs;
+		// PyObject *pyFileName, *pyModule;
+		// PyObject *pyCongestion,	*pyCallCongestion,	*pyCongestionArgs;
 
 		//std::vector<std::vector<CVector2>> m_predicted_trajectories; // Vector to store predicted trajectories for all robots
 		std::unordered_map<size_t, std::vector<CVector2>> m_predicted_trajectories;

@@ -130,6 +130,8 @@ class CPFA_controller : public BaseController {
 		bool isUsingPheromone;
 
 		bool isCongested;
+		std::unordered_map<std::string, int> dropCooldownMap; // Track when each robot last dropped a resource
+		const int DROP_COOLDOWN = 300; // Time before a robot can re-collect its own drop
 
 		unsigned int survey_count;
 		/* Pointer to the LEDs actuator */

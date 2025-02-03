@@ -304,12 +304,43 @@ void CPFA_controller::SetLoopFunctions(CPFA_loop_functions* lf) {
 
 }
 
+// Trying to modfiy state to prioritize dropped resources around the nest.
 void CPFA_controller::Departing()
 {
      //LOG<<"Departing..."<<endl;
     argos::Real distanceToTarget = (GetPosition() - GetTarget()).Length();
     argos::Real randomNumber = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
 
+	if(SimulationTick() > 1500){
+	// Step 1: Check for nearby dropped resources before moving randomly
+	argos::CVector2 closestDroppedFood;
+	bool foundDroppedFood = false;
+	argos::Real minDistance = std::numeric_limits<argos::Real>::max();
+	int currentTime = SimulationTick();  // Get current simulation time
+
+	for (size_t i = 0; i < LoopFunctions->CongestionDropList.size(); i++) {
+		argos::Real dist = (GetPosition() - LoopFunctions->CongestionDropList[i]).Length();
+		
+		// Check if this robot recently dropped food (cooldown active)
+		if (dropCooldownMap.find(GetId()) != dropCooldownMap.end() && 
+			(currentTime - dropCooldownMap[GetId()] < DROP_COOLDOWN)) {
+			continue; // Skip its own dropped resource
+		}
+
+		if (dist < minDistance) {
+			minDistance = dist;
+			closestDroppedFood = LoopFunctions->CongestionDropList[i];
+			foundDroppedFood = true;
+		}
+	}
+
+    if (foundDroppedFood && minDistance < 0.5) {  // Threshold distance to prioritize nearby resources
+        SetTarget(closestDroppedFood);
+        CPFA_state = SEARCHING;  // Immediately switch to searching
+        argos::LOG << "🚨 Robot " << GetId() << " prioritizing dropped resource at " << closestDroppedFood << std::endl;
+        return; // Prevent further execution of Departing logic
+    }
+	}
     /*
     ofstream log_output_stream;
     log_output_stream.open("cpfa_log.txt", ios::app);
@@ -757,21 +788,26 @@ void CPFA_controller::Returning() {
             LoopFunctions->CongestionDropList.push_back(dropPosition); // Add drop position to congestion list
             isHoldingFood = false; // Update robot's state
             CPFA_state = DROPPED;
-
+			
+			// Storing the time this robot dropped a resource
+			dropCooldownMap[GetId()] = SimulationTick();
+			// ✅ Ensure dropped food is available for collection again
+			LoopFunctions->FoodList.push_back(dropPosition);
+			LoopFunctions->FoodColoringList.push_back(argos::CColor::BLACK); // Set food color if needed
             // Log the drop due to congestion
-            argos::LOG << "Resource dropped due to congestion at: " << dropPosition << std::endl;
+            argos::LOG << "Robot " << GetId() << " dropped a resource due to congestion at: " << dropPosition << std::endl;
         } else{
-			// 🚨 Instead of searching immediately, the robot surveys its surroundings first
-			//argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Surveying before deciding where to go." << std::endl;
+			// Instead of searching immediately, the robot surveys its surroundings first
+			argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Surveying before deciding where to go." << std::endl;
 
-			// CPFA_state = SURVEYING;
-			// survey_count = 0;  // Reset survey timer	
+			CPFA_state = SURVEYING;
+			survey_count = 0;  // Reset survey timer	
 
-			// 🚨 If the robot is in congestion but has no food, resume searching
-			argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
+			// If the robot is in congestion but has no food, resume searching
+			// argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
 
-			CPFA_state = SEARCHING;
-			SetRandomSearchLocation();
+			// CPFA_state = SEARCHING;
+			// SetRandomSearchLocation();
 		}
     }
     else {
@@ -848,7 +884,16 @@ void CPFA_controller::SetHoldingFood() {
 					 j = i + 1;
 					 searchingTime+=SimulationTick()-startTime;
 					 startTime = SimulationTick();
-					 
+
+
+					// ✅ Check if this food was previously dropped
+					for (size_t k = 0; k < LoopFunctions->CongestionDropList.size(); k++) {
+						if ((LoopFunctions->FoodList[i] - LoopFunctions->CongestionDropList[k]).SquareLength() < FoodDistanceTolerance) {
+							argos::LOG << "🚨 Robot " << GetId() << " picked up a previously dropped resource at: " 
+									<< LoopFunctions->FoodList[i] << std::endl;
+							break;  // Stop checking after the first match
+						}
+					}
 				   //distribute a new food 
 			       /*  argos::CVector2 placementPosition;
 			         placementPosition.Set(RNG->Uniform(ForageRangeX), RNG->Uniform(ForageRangeY));
