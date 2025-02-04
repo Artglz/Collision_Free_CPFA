@@ -14,7 +14,6 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
   "GL_SILENCE_DEPRECATION"
   "QT_CORE_LIB"
   "QT_GUI_LIB"
-  "QT_NO_DEBUG"
   "QT_WIDGETS_LIB"
   )
 
@@ -31,7 +30,6 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "/usr/include/x86_64-linux-gnu/qt5/QtCore"
   "/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++"
   "/usr/include/lua5.3"
-  "/usr/include/python3.6m"
   "source"
   )
 

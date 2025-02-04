@@ -311,35 +311,37 @@ void CPFA_controller::Departing()
     argos::Real distanceToTarget = (GetPosition() - GetTarget()).Length();
     argos::Real randomNumber = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
 
-	if(SimulationTick() > 1500){
-	// Step 1: Check for nearby dropped resources before moving randomly
-	argos::CVector2 closestDroppedFood;
-	bool foundDroppedFood = false;
-	argos::Real minDistance = std::numeric_limits<argos::Real>::max();
-	int currentTime = SimulationTick();  // Get current simulation time
+	if(IsInTheNest()){
+		if(SimulationTick() > 1500){
+			// Step 1: Check for nearby dropped resources before moving randomly
+			argos::CVector2 closestDroppedFood;
+			bool foundDroppedFood = false;
+			argos::Real minDistance = std::numeric_limits<argos::Real>::max();
+			int currentTime = SimulationTick();  // Get current simulation time
 
-	for (size_t i = 0; i < LoopFunctions->CongestionDropList.size(); i++) {
-		argos::Real dist = (GetPosition() - LoopFunctions->CongestionDropList[i]).Length();
-		
-		// Check if this robot recently dropped food (cooldown active)
-		if (dropCooldownMap.find(GetId()) != dropCooldownMap.end() && 
-			(currentTime - dropCooldownMap[GetId()] < DROP_COOLDOWN)) {
-			continue; // Skip its own dropped resource
+			for (size_t i = 0; i < LoopFunctions->CongestionDropList.size(); i++) {
+				argos::Real dist = (GetPosition() - LoopFunctions->CongestionDropList[i]).Length();
+				
+				// Check if this robot recently dropped food (cooldown active)
+				if (dropCooldownMap.find(GetId()) != dropCooldownMap.end() && 
+					(currentTime - dropCooldownMap[GetId()] < DROP_COOLDOWN)) {
+					continue; // Skip its own dropped resource
+				}
+
+				if (dist < minDistance) {
+					minDistance = dist;
+					closestDroppedFood = LoopFunctions->CongestionDropList[i];
+					foundDroppedFood = true;
+				}
+			}
+
+			if (foundDroppedFood && minDistance < 2) {  // Threshold distance to prioritize nearby resources
+				SetTarget(closestDroppedFood);
+				CPFA_state = SEARCHING;  // Immediately switch to searching
+				argos::LOG << "🚨 Robot " << GetId() << " prioritizing dropped resource at " << closestDroppedFood << " at: " << currentTime << std::endl;
+				return; // Prevent further execution of Departing logic
+			}
 		}
-
-		if (dist < minDistance) {
-			minDistance = dist;
-			closestDroppedFood = LoopFunctions->CongestionDropList[i];
-			foundDroppedFood = true;
-		}
-	}
-
-    if (foundDroppedFood && minDistance < 0.5) {  // Threshold distance to prioritize nearby resources
-        SetTarget(closestDroppedFood);
-        CPFA_state = SEARCHING;  // Immediately switch to searching
-        argos::LOG << "🚨 Robot " << GetId() << " prioritizing dropped resource at " << closestDroppedFood << std::endl;
-        return; // Prevent further execution of Departing logic
-    }
 	}
     /*
     ofstream log_output_stream;
@@ -890,7 +892,7 @@ void CPFA_controller::SetHoldingFood() {
 					for (size_t k = 0; k < LoopFunctions->CongestionDropList.size(); k++) {
 						if ((LoopFunctions->FoodList[i] - LoopFunctions->CongestionDropList[k]).SquareLength() < FoodDistanceTolerance) {
 							argos::LOG << "🚨 Robot " << GetId() << " picked up a previously dropped resource at: " 
-									<< LoopFunctions->FoodList[i] << std::endl;
+									<< LoopFunctions->FoodList[i] << " at: " << SimulationTick() << std::endl;
 							break;  // Stop checking after the first match
 						}
 					}

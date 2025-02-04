@@ -58,7 +58,7 @@ include source/Base/CMakeFiles/Pheromone_autogen.dir/progress.make
 
 source/Base/CMakeFiles/Pheromone_autogen:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic MOC for target Pheromone"
-	cd /home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/Base && /usr/bin/cmake -E cmake_autogen /home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/Base/CMakeFiles/Pheromone_autogen.dir Release
+	cd /home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/Base && /usr/bin/cmake -E cmake_autogen /home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/Base/CMakeFiles/Pheromone_autogen.dir Debug
 
 Pheromone_autogen: source/Base/CMakeFiles/Pheromone_autogen
 Pheromone_autogen: source/Base/CMakeFiles/Pheromone_autogen.dir/build.make

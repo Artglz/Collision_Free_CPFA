@@ -1,5 +1,10 @@
 file(REMOVE_RECURSE
-  "BaseController_autogen/mocs_compilation.cpp"
+  "Nest_autogen"
+  "CMakeFiles/Nest_autogen.dir/AutogenOldSettings.cmake"
+  "BaseController_autogen"
+  "CMakeFiles/BaseController_autogen.dir/AutogenOldSettings.cmake"
+  "Pheromone_autogen"
+  "CMakeFiles/Pheromone_autogen.dir/AutogenOldSettings.cmake"
   "CMakeFiles/BaseController_autogen"
 )
 
