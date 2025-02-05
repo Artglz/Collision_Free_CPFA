@@ -17,6 +17,22 @@ using namespace argos;
 static unsigned int num_targets_collected = 0;
 
 class CPFA_loop_functions;
+#include <functional> // Required for std::hash
+
+struct Vector2Hash {
+    std::size_t operator()(const argos::CVector2& vec) const {
+        std::hash<argos::Real> hasher;
+        std::size_t hash1 = hasher(vec.GetX());
+        std::size_t hash2 = hasher(vec.GetY());
+        return hash1 ^ (hash2 << 1); // Combine the two hash values
+    }
+};
+
+struct Vector2Equal {
+    bool operator()(const argos::CVector2& lhs, const argos::CVector2& rhs) const {
+        return lhs.GetX() == rhs.GetX() && lhs.GetY() == rhs.GetY();
+    }
+};
 
 class CPFA_controller : public BaseController {
 
@@ -132,7 +148,8 @@ class CPFA_controller : public BaseController {
 		bool isCongested;
 		std::unordered_map<std::string, int> dropCooldownMap; // Track when each robot last dropped a resource
 		const int DROP_COOLDOWN = 300; // Time before a robot can re-collect its own drop
-
+		std::unordered_map<argos::CVector2, int, Vector2Hash, Vector2Equal> foodTargetCount; // Track how many robots are targeting each resource
+		const int MAX_ROBOTS_PER_RESOURCE = 1; // Max robots that can target the same resource
 
 		unsigned int survey_count;
 		/* Pointer to the LEDs actuator */

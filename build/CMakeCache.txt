@@ -28,7 +28,7 @@ ARGOS_FORCE_NO_QTOPENGL:BOOL=OFF
 ARGOS_INCLUDE_DIRS:STRING=/usr/local/include;/usr/include;/usr/include/Headers;/usr/include/x86_64-linux-gnu/qt5/;/usr/include/x86_64-linux-gnu/qt5/QtWidgets;/usr/include/x86_64-linux-gnu/qt5/QtGui;/usr/include/x86_64-linux-gnu/qt5/QtCore;/usr/lib/x86_64-linux-gnu/qt5//mkspecs/linux-g++;/usr/include/lua5.3
 
 //The linker flags to compile ARGoS code
-ARGOS_LDFLAGS:STRING=/usr/lib/x86_64-linux-gnu/libdl.so;/usr/lib/x86_64-linux-gnu/libpthread.so;/usr/lib/x86_64-linux-gnu/libfreeimage.so;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;/usr/lib/x86_64-linux-gnu/libGL.so;/usr/lib/x86_64-linux-gnu/libGLU.so;/usr/lib/x86_64-linux-gnu/libglut.so;/usr/lib/x86_64-linux-gnu/libXmu.so;/usr/lib/x86_64-linux-gnu/libXi.so;Qt5::Widgets;Qt5::Gui;/usr/lib/x86_64-linux-gnu/liblua5.3.so;/usr/lib/x86_64-linux-gnu/libm.so
+ARGOS_LDFLAGS:STRING=/usr/lib/x86_64-linux-gnu/libdl.so;/usr/lib/x86_64-linux-gnu/libpthread.so;/usr/lib/x86_64-linux-gnu/libfreeimage.so;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;/usr/lib/x86_64-linux-gnu/libGL.so;/usr/lib/x86_64-linux-gnu/libGLU.so;/usr/lib/x86_64-linux-gnu/libglut.so;/usr/lib/x86_64-linux-gnu/libXmu.so;/usr/lib/x86_64-linux-gnu/libXi.so;Qt5::Widgets;Qt5::Gui;/usr/lib/x86_64-linux-gnu/liblua5.3.so;/usr/lib/x86_64-linux-gnu/libm.so;/usr/lib/x86_64-linux-gnu/libdl.so;/usr/lib/x86_64-linux-gnu/libpthread.so;/usr/lib/x86_64-linux-gnu/libfreeimage.so;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;/usr/lib/x86_64-linux-gnu/libGL.so;/usr/lib/x86_64-linux-gnu/libGLU.so;/usr/lib/x86_64-linux-gnu/libglut.so;/usr/lib/x86_64-linux-gnu/libXmu.so;/usr/lib/x86_64-linux-gnu/libXi.so;Qt5::Widgets;Qt5::Gui;/usr/lib/x86_64-linux-gnu/liblua5.3.so;/usr/lib/x86_64-linux-gnu/libm.so;/usr/lib/x86_64-linux-gnu/libdl.so;/usr/lib/x86_64-linux-gnu/libpthread.so;/usr/lib/x86_64-linux-gnu/libfreeimage.so;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;/usr/lib/x86_64-linux-gnu/libGL.so;/usr/lib/x86_64-linux-gnu/libGLU.so;/usr/lib/x86_64-linux-gnu/libglut.so;/usr/lib/x86_64-linux-gnu/libXmu.so;/usr/lib/x86_64-linux-gnu/libXi.so;Qt5::Widgets;Qt5::Gui;/usr/lib/x86_64-linux-gnu/liblua5.3.so;/usr/lib/x86_64-linux-gnu/libm.so
 
 //Path to a library.
 ARGOS_LIBRARY:FILEPATH=/usr/local/lib/argos3/libargos3core_simulator.so
@@ -48,7 +48,7 @@ ARGOS_QTOPENGL_LIBRARIES:STRING=/usr/lib/x86_64-linux-gnu/libGL.so;/usr/lib/x86_
 ARGoS_DIR:PATH=/usr/local/share/argos3/cmake
 
 //Dependencies for the target
-BaseController_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;argos3core_simulator;general;argos3plugin_simulator_footbot;general;argos3plugin_simulator_genericrobot;
+BaseController_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;argos3core_simulator;general;argos3plugin_simulator_footbot;general;argos3plugin_simulator_genericrobot;
 
 //Path to a program.
 CMAKE_AR:FILEPATH=/usr/bin/ar
@@ -166,6 +166,12 @@ CMAKE_OBJCOPY:FILEPATH=/usr/bin/objcopy
 CMAKE_OBJDUMP:FILEPATH=/usr/bin/objdump
 
 //Value Computed by CMake
+CMAKE_PROJECT_DESCRIPTION:STATIC=
+
+//Value Computed by CMake
+CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
+
+//Value Computed by CMake
 CMAKE_PROJECT_NAME:STATIC=CPFA-ARGoS
 
 //Path to a program.
@@ -224,10 +230,10 @@ CPFA-ARGoS_BINARY_DIR:STATIC=/home/arturo/src/argos3/build_simulator/Collision_F
 CPFA-ARGoS_SOURCE_DIR:STATIC=/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA
 
 //Dependencies for the target
-CPFA_controller_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;BaseController;general;Pheromone;general;Nest;general;jsoncpp_lib;
+CPFA_controller_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;BaseController;general;Pheromone;general;Nest;general;jsoncpp_lib;
 
 //Dependencies for the target
-CPFA_loop_functions_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;CPFA_controller;general;argos3core_simulator;general;argos3plugin_simulator_entities;general;argos3plugin_simulator_footbot;general;argos3plugin_simulator_genericrobot;general;argos3plugin_simulator_qtopengl;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;jsoncpp_lib;
+CPFA_loop_functions_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;CPFA_controller;general;argos3core_simulator;general;argos3plugin_simulator_entities;general;argos3plugin_simulator_footbot;general;argos3plugin_simulator_genericrobot;general;argos3plugin_simulator_qtopengl;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;jsoncpp_lib;
 
 //DLFCN header location
 DLFCN_INCLUDE_DIR:PATH=/usr/include
@@ -263,6 +269,9 @@ GLUT_Xmu_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libXmu.so
 GLUT_glut_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libglut.so
 
 //Path to a file.
+LUA_INCLUDE_DIR:PATH=/usr/include/lua5.3
+
+//Path to a file.
 LUA_INCLUDE_PREFIX:PATH=/usr
 
 //Path to a library.
@@ -272,7 +281,7 @@ LUA_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/liblua5.3.so
 LUA_MATH_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libm.so
 
 //Dependencies for the target
-Nest_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;
+Nest_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;
 
 //Path to a file.
 OPENGL_EGL_INCLUDE_DIR:PATH=/usr/include
@@ -308,7 +317,7 @@ PTHREADS_INCLUDE_DIR:PATH=/usr/include
 PTHREADS_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libpthread.so
 
 //Dependencies for the target
-Pheromone_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;
+Pheromone_LIB_DEPENDS:STATIC=general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;general;/usr/lib/x86_64-linux-gnu/libdl.so;general;/usr/lib/x86_64-linux-gnu/libpthread.so;general;/usr/lib/x86_64-linux-gnu/libfreeimage.so;general;/usr/lib/x86_64-linux-gnu/libfreeimageplus.so;general;/usr/lib/x86_64-linux-gnu/libGL.so;general;/usr/lib/x86_64-linux-gnu/libGLU.so;general;/usr/lib/x86_64-linux-gnu/libglut.so;general;/usr/lib/x86_64-linux-gnu/libXmu.so;general;/usr/lib/x86_64-linux-gnu/libXi.so;general;Qt5::Widgets;general;Qt5::Gui;general;/usr/lib/x86_64-linux-gnu/liblua5.3.so;general;/usr/lib/x86_64-linux-gnu/libm.so;
 
 //The directory containing a CMake configuration file for Qt5Core.
 Qt5Core_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core
@@ -329,7 +338,7 @@ Qt5_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5
 Qt6_DIR:PATH=Qt6_DIR-NOTFOUND
 
 //The directory containing a CMake configuration file for jsoncpp.
-jsoncpp_DIR:PATH=/usr/local/lib/cmake/jsoncpp
+jsoncpp_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/jsoncpp
 
 
 ########################
@@ -349,9 +358,9 @@ CMAKE_CACHEFILE_DIR:INTERNAL=/home/arturo/src/argos3/build_simulator/Collision_F
 //Major version of cmake used to create the current loaded cache
 CMAKE_CACHE_MAJOR_VERSION:INTERNAL=3
 //Minor version of cmake used to create the current loaded cache
-CMAKE_CACHE_MINOR_VERSION:INTERNAL=10
+CMAKE_CACHE_MINOR_VERSION:INTERNAL=16
 //Patch version of cmake used to create the current loaded cache
-CMAKE_CACHE_PATCH_VERSION:INTERNAL=2
+CMAKE_CACHE_PATCH_VERSION:INTERNAL=3
 //ADVANCED property for variable: CMAKE_COLOR_MAKEFILE
 CMAKE_COLOR_MAKEFILE-ADVANCED:INTERNAL=1
 //Path to CMake executable.
@@ -392,6 +401,8 @@ CMAKE_C_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1
 CMAKE_C_FLAGS_RELEASE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_C_FLAGS_RELWITHDEBINFO
 CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
+//Path to cache edit program executable.
+CMAKE_EDIT_COMMAND:INTERNAL=/usr/bin/ccmake
 //Executable file format
 CMAKE_EXECUTABLE_FORMAT:INTERNAL=ELF
 //ADVANCED property for variable: CMAKE_EXE_LINKER_FLAGS
@@ -410,6 +421,8 @@ CMAKE_EXPORT_COMPILE_COMMANDS-ADVANCED:INTERNAL=1
 CMAKE_EXTRA_GENERATOR:INTERNAL=
 //Name of generator.
 CMAKE_GENERATOR:INTERNAL=Unix Makefiles
+//Generator instance identifier.
+CMAKE_GENERATOR_INSTANCE:INTERNAL=
 //Name of generator platform.
 CMAKE_GENERATOR_PLATFORM:INTERNAL=
 //Name of generator toolset.
@@ -446,7 +459,7 @@ CMAKE_PLATFORM_INFO_INITIALIZED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_RANLIB
 CMAKE_RANLIB-ADVANCED:INTERNAL=1
 //Path to CMake installation.
-CMAKE_ROOT:INTERNAL=/usr/share/cmake-3.10
+CMAKE_ROOT:INTERNAL=/usr/share/cmake-3.16
 //ADVANCED property for variable: CMAKE_SHARED_LINKER_FLAGS
 CMAKE_SHARED_LINKER_FLAGS-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_SHARED_LINKER_FLAGS_DEBUG
@@ -509,6 +522,8 @@ GLUT_Xi_LIBRARY-ADVANCED:INTERNAL=1
 GLUT_Xmu_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: GLUT_glut_LIBRARY
 GLUT_glut_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: LUA_INCLUDE_DIR
+LUA_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: LUA_LIBRARY
 LUA_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: LUA_MATH_LIBRARY

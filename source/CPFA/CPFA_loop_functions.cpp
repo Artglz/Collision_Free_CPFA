@@ -386,7 +386,7 @@ void CPFA_loop_functions::PostStep() {
 				traj = temp_trajectories[c2.GetId()];
 				dropped_trajectories[c2.GetId()].push_back(traj);
 				counter_nest_history.push_back(counter_nest);
-				//temp_trajectories.erase(c2.GetId()); // remove the trajectory from temp_trajectories
+				temp_trajectories.erase(c2.GetId()); // remove the trajectory from temp_trajectories
 			}
 			else {
 				// If the robot is not in the "FOUND" or "DROPPED" state but temp_trajectories contains its ID,
@@ -403,9 +403,11 @@ void CPFA_loop_functions::PostStep() {
 						// Call predictCongestion with the windowed trajectory
 						bool drop = predictCongestion(start_index, end_index, temp_trajectories[c2.GetId()]);
 						c2.SetCongestion(drop);
-						// if (drop) {
-						// 	argos::LOG << "Robot " << c2.GetId() << " has dropped a resource due to congestion." << std::endl;
-						// }
+						// debugging
+						if (drop) {
+							argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index << std::endl;
+							argos::LOG << "Trajectory Size: " << trajectory_size << std::endl;
+						}
 					}
 				}
 			}
