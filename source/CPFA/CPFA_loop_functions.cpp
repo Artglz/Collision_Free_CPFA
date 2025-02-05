@@ -225,10 +225,10 @@ double CPFA_loop_functions::sigmoid(double z) {
 // Function to calculate features and predict congestion
 bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index, const std::vector<argos::CVector2>& coordinates) {
     // Validate indices
-    if (start_index >= end_index || end_index >= coordinates.size() || coordinates.size() < 50) {
-        std::cerr << "Error: Invalid indices or insufficient coordinates (expected at least 50).\n";
-        return false;
-    }
+    // if (start_index >= end_index || end_index > coordinates.size() || coordinates.size() < 50) {
+    //     std::cerr << "Error: Invalid indices or insufficient coordinates (expected at least 50).\n";
+    //     return false;
+    // }
     // Load model parameters from JSON
     std::ifstream file("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/logistic_model.json");
     if (!file.is_open()) {
@@ -247,6 +247,13 @@ bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index
     double coef_end_index = modelParams["coefficients"][1].asDouble();
     double coef_ratio_distance = modelParams["coefficients"][2].asDouble();
     double coef_angle = modelParams["coefficients"][3].asDouble();
+	//print all the coefficients
+	// argos::LOG << "intercept: " << intercept << std::endl;
+	// argos::LOG << "coef_start_index: " << coef_start_index << std::endl;
+	// argos::LOG << "coef_end_index: " << coef_end_index << std::endl;
+	// argos::LOG << "coef_ratio_distance: " << coef_ratio_distance << std::endl;
+	// argos::LOG << "coef_angle: " << coef_angle << std::endl;
+
 
     // Calculate optimal distance based on a constant velocity (e.g., 0.08 units per step)
     double optimal_distance = 0.08 * (end_index - start_index);
@@ -318,7 +325,7 @@ void CPFA_loop_functions::PostStep() {
 	//std::map<std::string, std::vector<argos::CVector2>> dropped_trajectories;
 	const size_t WINDOW_SIZE = 300;
 	const size_t STEP_SIZE = 100;
-
+	
 	robotPosList.clear();
 	//robotPosList2.clear();
 
@@ -371,9 +378,11 @@ void CPFA_loop_functions::PostStep() {
 		// }
 
 		// if(c2.IsHoldingFood() == true){
-			if(c2.GetStatus() == "FOUND"){
+			if(c2.GetStatus() == "GAVE_UP" || c2.GetStatus() == "FOUND"){
 				// argos::LOG << "Robot " << c2.GetId() << " has found a resource" << std::endl;
 				temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
+				found_resource_count++;
+				//argos::LOG << found_resource_count << " resources found" << std::endl;
 			}
 			else if(c2.GetStatus() == "DROPPED"){
 				dropped_resource = true;
@@ -398,15 +407,24 @@ void CPFA_loop_functions::PostStep() {
 					if (trajectory_size >= WINDOW_SIZE && (trajectory_size - WINDOW_SIZE) % STEP_SIZE == 0) {
 						// Determine the start and end indices for the current window
 						size_t start_index = trajectory_size - WINDOW_SIZE;
-						size_t end_index = trajectory_size - 1;
-
+						size_t end_index = trajectory_size;
+						// Obtain trajectory for the current window
+						std::vector<argos::CVector2> windowed_trajectory(temp_trajectories[c2.GetId()].begin() + start_index, temp_trajectories[c2.GetId()].begin() + end_index);
+						// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
+						//argos::LOG << "Robot " << c2.GetId() << " returning with indexes: " << start_index << " - " << end_index << std::endl;
 						// Call predictCongestion with the windowed trajectory
-						bool drop = predictCongestion(start_index, end_index, temp_trajectories[c2.GetId()]);
+						// bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
+						bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
+						//argos::LOG << "Robot " << c2.GetId() << " has a probability of congestion: " << p << std::endl;		
+
 						c2.SetCongestion(drop);
 						// debugging
 						if (drop) {
-							argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index << std::endl;
-							argos::LOG << "Trajectory Size: " << trajectory_size << std::endl;
+							//argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index <<std::endl;
+							// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
+							resources_dropped++;
+							//argos:LOG << resources_dropped << " resources dropped" << std::endl;
+							temp_trajectories.erase(c2.GetId());
 						}
 					}
 				}
@@ -452,7 +470,7 @@ void CPFA_loop_functions::PostExperiment() {
 	  
     //  printf("%f, %f, %lu\n", score, getSimTimeInSeconds(), RandomSeed);
     //  printf("%f\n", score);  
-                  
+	argos::LOG << resources_dropped << " resources dropped" << std::endl;
     if (PrintFinalScore == 1) {
         string type="";
         if (FoodDistribution == 0) type = "random";

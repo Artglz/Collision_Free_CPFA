@@ -107,7 +107,8 @@ class CPFA_controller : public BaseController {
 			CONGESTED = 4,
 			INTERSECTION = 5,
 			DROPPED = 6,
-			FOUND = 7
+			FOUND = 7,
+			GAVE_UP = 8
 		} CPFA_state;
 
 		/* iAnt CPFA state functions */
@@ -120,6 +121,7 @@ class CPFA_controller : public BaseController {
 		void Intersection();
 		void Dropped();
 		void Found();
+		void Gave_Up();
 		/* CPFA helper functions */
 		void SetRandomSearchLocation();
 		void SetHoldingFood();

@@ -4,8 +4,8 @@
   <!-- * General configuration * -->
   <!-- ************************* -->
   <framework>
-    <system threads="0"/>
-    <experiment length="240" random_seed="209426" ticks_per_second="32"/> <!-- the length is in seconds. The number of ticks is ticks_per_second*length-->
+    <system threads="0"/> <!-- 209426 -->
+    <experiment length="240" random_seed="0" ticks_per_second="32"/> <!-- the length is in seconds. The number of ticks is ticks_per_second*length-->
   </framework>
 
   <!-- *************** -->

@@ -209,7 +209,8 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		int PrintFinalScore;
 		// PyObject *pyFileName, *pyModule;
 		// PyObject *pyCongestion,	*pyCallCongestion,	*pyCongestionArgs;
-
+		size_t found_resource_count = 0;
+		size_t resources_dropped = 0;
 		//std::vector<std::vector<CVector2>> m_predicted_trajectories; // Vector to store predicted trajectories for all robots
 		std::unordered_map<size_t, std::vector<CVector2>> m_predicted_trajectories;
     	Real m_collision_threshold; // Distance threshold for detecting collisions
