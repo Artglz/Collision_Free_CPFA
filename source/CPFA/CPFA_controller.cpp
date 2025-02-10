@@ -190,16 +190,6 @@ void CPFA_controller::CPFA() {
 			//SetIsHeadingToNest(false);
 			Surveying();
 			break;
-		case CONGESTED:
-			//argos::LOG << "CONGESTED" << std::endl;
-			//SetIsHeadingToNest(false);
-			Congested();
-			break;
-		case INTERSECTION:
-			//argos::LOG << "Intersection" << std::endl;
-			//SetIsHeadingToNest(false);
-			Intersection();
-			break;
 		case DROPPED:
 			//argos::LOG << "Intersection" << std::endl;
 			//SetIsHeadingToNest(false);
@@ -364,7 +354,14 @@ void CPFA_controller::Departing()
     log_output_stream << "Current Position: " << GetPosition() << ", Target: " << GetTarget() << endl;
     log_output_stream.close();
     */
-
+   	if (IsInTheNest() && SimulationTick() % SimulationTicksPerSecond() == 0) {
+		if (!LoopFunctions->CongestionDropList.empty()) {
+			// Force robots to first check the congestion list before departing
+			SetTarget(LoopFunctions->CongestionDropList[0]); 
+			CPFA_state = SEARCHING;
+			return;
+		}
+	}
 	/* When not informed, continue to travel until randomly switching to the searching state. */
     if((SimulationTick() % (SimulationTicksPerSecond() / 2)) == 0) {
        if(isInformed == false){
@@ -580,67 +577,7 @@ void CPFA_controller::Surveying() {
 	}
 }
 
-//this is coincident paths scenario. If a robot has coincident path with another robot, it will set a new waypoint to avoid collision
-// I think need to add logic in which the robot will be added to a list that way the robots arent chosen again
-// also how is it determing which robot out of the 2 will the waypoint be set for
-void CPFA_controller::Congested() {
 
-	//a new waypoint is only made the first time that a robot enters this state, the rest of the time it will just go to that specific waypoint
-	//so i need to add logic for this
-
-	//make a vector that has 0,0 not as target
-	std::vector<double> nest = {0, 0};
-	//get position of robot
-	std::vector<double> position = {GetPosition().GetX(), GetPosition().GetY()};
-	//get distance of robot from nest
-	double distance = sqrt(pow(nest[0] - position[0], 2) + pow(nest[1] - position[1], 2));
-	//get angle
-	double angle = atan2(nest[1] - position[1], nest[0] - position[0]);
-
-    double new_distance = distance/2; // move x units away from the nest
-    double new_angle = angle + 45; // Adjust angle by 45 degrees to make a triangle like the paper
-
-    // then calculate the new waypoint coordinates
-    double new_x = nest[0] + new_distance * cos(new_angle);
-    double new_y = nest[1] + new_distance * sin(new_angle);
-	
-	//make robot go to new_x, new_y
-	SetTarget(argos::CVector2(new_x, new_y));
-	//after it reaches the new_x, new_y, set the state to returning
-	if (distance < 0.05) {
-		CPFA_state = RETURNING;
-	}
-	//SetTarget(argos::CVector2(0,0));
-}
-
-// this is if a two robots intersect at a certain point. In this case one robot will stop for 6 timesteps to let the other robot pass and avoid the collision
-void CPFA_controller::Intersection() {
-	//make robot stop for x timesteps then go back to returning state
-	if (collisionDelay < 100) {
-		Stop();
-		collisionDelay++;
-	}
-	else {
-		collisionDelay = 0;
-		//CPFA_state = RETURNING;
-	}
-}
-
-
-// void CPFA_controller::Working() {
-// 	//LOG<<"Working..."<<endl;
-// 	// If we are holding food, return to the nest.
-// 	if(isHoldingFood) {
-// 		SetTarget(LoopFunctions->NestPosition);
-// 		//CPFA_state = RETURNING;
-// 	}
-
-// 	// If we are not holding food, we will go to the food that the other robots dropped off around the nest radius boundary
-
-
-// }
-
-//find where the code is dropping the resource and the call this function
 void CPFA_controller::Dropped(){
 	CPFA_state = DEPARTING;
 }
@@ -808,8 +745,6 @@ void CPFA_controller::Returning() {
             // Drop the resource at the current position
             argos::CVector2 dropPosition = GetPosition(); // Get the robot's current position
             LoopFunctions->CongestionDropList.push_back(dropPosition); // Add drop position to congestion list
-            isHoldingFood = false; // Update robot's state
-            CPFA_state = DROPPED;
 			
 			// Storing the time this robot dropped a resource
 			dropCooldownMap[GetId()] = SimulationTick();
@@ -817,8 +752,30 @@ void CPFA_controller::Returning() {
 			LoopFunctions->FoodList.push_back(dropPosition);
 			LoopFunctions->FoodColoringList.push_back(argos::CColor::BLACK); // Set food color if needed
             // Log the drop due to congestion
-            //argos::LOG << "Robot " << GetId() << " dropped a resource due to congestion at: " << dropPosition << std::endl;
+            argos::LOG << "Robot " << GetId() << " dropped a resource due to congestion at: " << dropPosition << " " << SimulationTick() << std::endl;
 			// argos::LOG << "Congested with resource at: " <<  SimulationTick() << std::endl;
+			if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
+				SetIsHeadingToNest(false);
+				SetTarget(SiteFidelityPosition); // Use site fidelity
+				isInformed = true;
+				// argos::LOG << "Robot " << GetId() << " is using site fidelity after dropping a resource due to congestion at: " 
+				// 		<< dropPosition << " at: " << SimulationTick() << std::endl;
+			}
+			else {
+				SetRandomSearchLocation(); // Perform a random search
+				isInformed = false;
+				isUsingSiteFidelity = false;
+				// argos::LOG << "Robot " << GetId() << " is resuming search after dropping a resource due to congestion at: " 
+				// 		<< dropPosition << " at: " << SimulationTick() << std::endl;
+			}
+
+			isGivingUpSearch = false;
+			CPFA_state = DROPPED;
+			isHoldingFood = false;
+			isCongested = false; // hopefully fixes problem where robot gets detected as congestion even thought it is not
+			travelingTime += SimulationTick() - startTime;
+			startTime = SimulationTick();
+
         } else{
 			// Instead of searching immediately, the robot surveys its surroundings first
 			// argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Surveying before deciding where to go." << std::endl;
@@ -895,12 +852,20 @@ void CPFA_controller::SetHoldingFood() {
 		    std::vector<argos::CVector2> newFoodList;
 		    std::vector<argos::CColor> newFoodColoringList;
 		    size_t i = 0, j = 0;
+			int currentTime = SimulationTick();  // Get current simulation time
 		    //argos::LOG<<"LoopFunctions->FoodList size =" <<LoopFunctions->FoodList.size() << endl;
 		    //argos::LOG<<"LoopFunctions->FoodColoringList size =" <<LoopFunctions->FoodColoringList.size() << endl;
  
 	         for(i = 0; i < LoopFunctions->FoodList.size(); i++) {
-		            
 	            if((GetPosition() - LoopFunctions->FoodList[i]).SquareLength() < FoodDistanceTolerance ) {
+					// if (dropCooldownMap.find(GetId()) != dropCooldownMap.end() &&
+					// 	(currentTime - dropCooldownMap[GetId()] < DROP_COOLDOWN)) {
+						
+					// 	argos::LOG << "⏳ Robot " << GetId() << " is still in cooldown and cannot pick up its own dropped resource at: " 
+					// 			<< LoopFunctions->FoodList[i] << " (Tick: " << currentTime << ")" << std::endl;
+						
+					// 	continue;  // Skip picking up its own recently dropped food
+					// }					
 					// We found food! Calculate the nearby food density.
 					 isHoldingFood = true;
                      //CPFA_state = SURVEYING;
@@ -910,11 +875,11 @@ void CPFA_controller::SetHoldingFood() {
 					 startTime = SimulationTick();
 
 
-					// ✅ Check if this food was previously dropped
+					// Check if this food was previously dropped
 					for (size_t k = 0; k < LoopFunctions->CongestionDropList.size(); k++) {
 						if ((LoopFunctions->FoodList[i] - LoopFunctions->CongestionDropList[k]).SquareLength() < FoodDistanceTolerance) {
-							//argos::LOG << "🚨 Robot " << GetId() << " picked up a previously dropped resource at: " 
-									//<< LoopFunctions->FoodList[i] << " at: " << SimulationTick() << std::endl;
+							// argos::LOG << "🚨 Robot " << GetId() << " picked up a previously dropped resource at: " 
+							// 		<< LoopFunctions->FoodList[i] << " at: " << SimulationTick() << std::endl;
 
 							// Remove the food from the dropped list
 							LoopFunctions->CongestionDropList.erase(LoopFunctions->CongestionDropList.begin() + k);
@@ -1237,8 +1202,6 @@ string CPFA_controller::GetStatus(){//qilu 10/22
     else if (CPFA_state ==SEARCHING)return "SEARCHING";
     else if (CPFA_state == RETURNING)return "RETURNING";
     else if (CPFA_state == SURVEYING) return "SURVEYING";
-	else if (CPFA_state == CONGESTED) return "CONGESTED";
-	else if(CPFA_state == INTERSECTION) return "INTERSECTION";
 	else if(CPFA_state == DROPPED) return "DROPPED";
 	else if(CPFA_state == FOUND) return "FOUND";
 	else if(CPFA_state == GAVE_UP) return "GAVE_UP";
@@ -1252,8 +1215,6 @@ void CPFA_controller::setStatus(string status){
 	else if(status == "SEARCHING") CPFA_state = SEARCHING;
 	else if(status == "RETURNING") CPFA_state = RETURNING;
 	else if(status == "SURVEYING") CPFA_state = SURVEYING;
-	else if(status == "CONGESTED") CPFA_state = CONGESTED;
-	else if(status == "INTERSECTION") CPFA_state = INTERSECTION;
 	else if(status == "DROPPED") CPFA_state = DROPPED;
 	else if(status == "FOUND") CPFA_state = FOUND;
 	else if(status == "GAVE_UP") CPFA_state = GAVE_UP;

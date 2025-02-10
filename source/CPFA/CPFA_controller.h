@@ -104,11 +104,9 @@ class CPFA_controller : public BaseController {
 			SEARCHING = 1,
 			RETURNING = 2,
 			SURVEYING = 3,
-			CONGESTED = 4,
-			INTERSECTION = 5,
-			DROPPED = 6,
-			FOUND = 7,
-			GAVE_UP = 8
+			DROPPED = 4,
+			FOUND = 5,
+			GAVE_UP = 6
 		} CPFA_state;
 
 		/* iAnt CPFA state functions */
@@ -117,8 +115,6 @@ class CPFA_controller : public BaseController {
 		void Searching();
 		void Returning();
 		void Surveying();
-		void Congested();
-		void Intersection();
 		void Dropped();
 		void Found();
 		void Gave_Up();
@@ -147,9 +143,9 @@ class CPFA_controller : public BaseController {
 		string results_full_path;
 		bool isUsingPheromone;
 
-		bool isCongested;
+		bool isCongested = false;
 		std::unordered_map<std::string, int> dropCooldownMap; // Track when each robot last dropped a resource
-		const int DROP_COOLDOWN = 300; // Time before a robot can re-collect its own drop
+		const int DROP_COOLDOWN = 75; // Time before a robot can re-collect its own drop
 		std::unordered_map<argos::CVector2, int, Vector2Hash, Vector2Equal> foodTargetCount; // Track how many robots are targeting each resource
 		const int MAX_ROBOTS_PER_RESOURCE = 1; // Max robots that can target the same resource
 
