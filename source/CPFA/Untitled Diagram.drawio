@@ -109,7 +109,9 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="tR497tWXx0o7Z0_piQqV-57" value="Find and collect resource" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="tR497tWXx0o7Z0_piQqV-59" target="tR497tWXx0o7Z0_piQqV-66">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry x="0.4762" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="tR497tWXx0o7Z0_piQqV-58" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="tR497tWXx0o7Z0_piQqV-59">
           <mxGeometry relative="1" as="geometry">
@@ -138,7 +140,7 @@
         <mxCell id="tR497tWXx0o7Z0_piQqV-62" value="Search with informed walk" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
           <mxGeometry x="300" y="1260" width="110" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="tR497tWXx0o7Z0_piQqV-73" value="Is Congested" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="tR497tWXx0o7Z0_piQqV-64" target="tR497tWXx0o7Z0_piQqV-72">
+        <mxCell id="tR497tWXx0o7Z0_piQqV-73" value="&lt;font style=&quot;color: rgb(255, 51, 255);&quot;&gt;Is Congested&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="tR497tWXx0o7Z0_piQqV-64" target="tR497tWXx0o7Z0_piQqV-72">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="tR497tWXx0o7Z0_piQqV-64" value="Return to Nest" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
@@ -152,10 +154,10 @@
         <mxCell id="tR497tWXx0o7Z0_piQqV-66" value="Sense local resource density" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
           <mxGeometry x="90" y="1080" width="110" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="tR497tWXx0o7Z0_piQqV-74" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="tR497tWXx0o7Z0_piQqV-72" target="tR497tWXx0o7Z0_piQqV-52">
+        <mxCell id="tR497tWXx0o7Z0_piQqV-74" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="tR497tWXx0o7Z0_piQqV-72" target="tR497tWXx0o7Z0_piQqV-52">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="tR497tWXx0o7Z0_piQqV-72" value="Dropoff Resource/Stop returning to nest" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+        <mxCell id="tR497tWXx0o7Z0_piQqV-72" value="Dropoff Resource/Stop returning to nest" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
           <mxGeometry x="300" y="950" width="110" height="50" as="geometry" />
         </mxCell>
         <mxCell id="tR497tWXx0o7Z0_piQqV-75" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.092;entryY=0.967;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="tR497tWXx0o7Z0_piQqV-64" target="tR497tWXx0o7Z0_piQqV-52">
