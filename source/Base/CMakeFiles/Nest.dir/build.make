@@ -106,6 +106,17 @@ source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libGLU.so
 source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libglut.so
 source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libXmu.so
 source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libXi.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/liblua5.3.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libm.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libdl.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libpthread.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libfreeimage.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libfreeimageplus.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libGL.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libGLU.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libglut.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libXmu.so
+source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libXi.so
 source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libQt5Widgets.so.5.12.8
 source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/libQt5Gui.so.5.12.8
 source/Base/libNest.so: /usr/lib/x86_64-linux-gnu/liblua5.3.so

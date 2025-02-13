@@ -4,8 +4,8 @@
   <!-- * General configuration * -->
   <!-- ************************* -->
   <framework>
-    <system threads="0"/> <!-- 209426 -->
-    <experiment length="300" random_seed="442986" ticks_per_second="32"/> <!-- the length is in seconds. The number of ticks is ticks_per_second*length-->
+    <system threads="0"/> <!-- 209426 --> <!-- 797403-->
+    <experiment length="300" random_seed="941843" ticks_per_second="32"/> <!-- the length is in seconds. The number of ticks is ticks_per_second*length-->
   </framework>
 
   <!-- *************** -->
@@ -50,7 +50,7 @@
          />
 
          <settings ClusterWidthX="8" ClusterWidthY="8" DrawDensityRate="4" DrawIDs="1" 
-	 DrawTargetRays="1" DrawTrails="0" FoodDistribution="1" FoodItemCount="4" 
+	 DrawTargetRays="1" DrawTrails="0" FoodDistribution="1" FoodItemCount="128" 
 	 FoodRadius="0.05" MaxSimCounter="1" MaxSimTimeInSeconds="1800" 
 	 NestElevation="0.001" NestPosition="0,0" NestRadius="0.15" NumberOfClusters="2" OutputData="0" 
 	 PowerlawFoodUnitCount="128" VariableFoodPlacement="0"/>

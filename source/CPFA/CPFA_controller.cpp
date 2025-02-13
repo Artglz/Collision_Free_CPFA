@@ -354,14 +354,14 @@ void CPFA_controller::Departing()
     log_output_stream << "Current Position: " << GetPosition() << ", Target: " << GetTarget() << endl;
     log_output_stream.close();
     */
-   	if (IsInTheNest() && SimulationTick() % SimulationTicksPerSecond() == 0) {
-		if (!LoopFunctions->CongestionDropList.empty()) {
-			// Force robots to first check the congestion list before departing
-			SetTarget(LoopFunctions->CongestionDropList[0]); 
-			CPFA_state = SEARCHING;
-			return;
-		}
-	}
+   	// if (IsInTheNest() && SimulationTick() % SimulationTicksPerSecond() == 0) {
+	// 	if (!LoopFunctions->CongestionDropList.empty()) {
+	// 		// Force robots to first check the congestion list before departing
+	// 		SetTarget(LoopFunctions->CongestionDropList[0]); 
+	// 		CPFA_state = SEARCHING;
+	// 		return;
+	// 	}
+	// }
 	/* When not informed, continue to travel until randomly switching to the searching state. */
     if((SimulationTick() % (SimulationTicksPerSecond() / 2)) == 0) {
        if(isInformed == false){
@@ -740,17 +740,19 @@ void CPFA_controller::Returning() {
         startTime = SimulationTick();
     }
     else if (IsInCongestion()) {
-        // Handle congestion-specific drop logic
+       // Handle congestion-specific drop logic
         if (isHoldingFood) {
             // Drop the resource at the current position
             argos::CVector2 dropPosition = GetPosition(); // Get the robot's current position
             LoopFunctions->CongestionDropList.push_back(dropPosition); // Add drop position to congestion list
-			
+			//call function predict congestion from loop function
+			// LoopFunctions->PredictCongestion();
+
 			// Storing the time this robot dropped a resource
 			dropCooldownMap[GetId()] = SimulationTick();
 			// Ensure dropped food is available for collection again
 			LoopFunctions->FoodList.push_back(dropPosition);
-			LoopFunctions->FoodColoringList.push_back(argos::CColor::BLACK); // Set food color if needed
+			LoopFunctions->FoodColoringList.push_back(argos::CColor::RED); // Set food color if needed
             // Log the drop due to congestion
             argos::LOG << "Robot " << GetId() << " dropped a resource due to congestion at: " << dropPosition << " " << SimulationTick() << std::endl;
 			// argos::LOG << "Congested with resource at: " <<  SimulationTick() << std::endl;
@@ -772,7 +774,7 @@ void CPFA_controller::Returning() {
 			isGivingUpSearch = false;
 			CPFA_state = DROPPED;
 			isHoldingFood = false;
-			isCongested = false; // hopefully fixes problem where robot gets detected as congestion even thought it is not
+			isCongested = false; // fixes problem where robot gets detected as congestion even thought it is not
 			travelingTime += SimulationTick() - startTime;
 			startTime = SimulationTick();
 
@@ -784,7 +786,7 @@ void CPFA_controller::Returning() {
 			// survey_count = 0;  // Reset survey timer	
 
 			// If the robot is in congestion but has no food, resume searching
-			//argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
+			argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
 			// argos::LOG << "Congested with no resource at: " <<  SimulationTick() << std::endl;
 			CPFA_state = SEARCHING;
 			SetRandomSearchLocation();
@@ -792,6 +794,17 @@ void CPFA_controller::Returning() {
     }
     else {
         // If not in the nest or congestion, proceed towards the target
+
+		//write congestion logic here
+		returning_trajectory.push_back(GetPosition());
+		if(returning_trajectory.size() >= WINDOW_SIZE && (returning_trajectory.size() - WINDOW_SIZE) % STEP_SIZE == 0){
+			//call predict congestion function
+			size_t start_index = returning_trajectory.size() - 300;
+			size_t end_index = returning_trajectory.size();		
+			std::vector<argos::CVector2> trajectory_segment(returning_trajectory.begin() + start_index, returning_trajectory.begin() + end_index);
+			bool drop = LoopFunctions->predictCongestion(start_index, end_index, trajectory_segment);
+			SetCongestion(drop);
+		}
         if (IsAtTarget()) {
             // Perform random search adjustment if the target is reached
             argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();

@@ -377,72 +377,74 @@ void CPFA_loop_functions::PostStep() {
 		// 	counter_nest_history.push_back(counter_nest);
 		// }
 
-		// if(c2.IsHoldingFood() == true){
-			// if(c2.GetStatus() == "GAVE_UP" || c2.IsHoldingFood() == true){
-			if(c2.GetStatus() == "GAVE_UP" || c2.GetStatus() == "FOUND"){
-				// argos::LOG << "Robot " << c2.GetId() << " has found a resource" << std::endl;
-				temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
-				if ( c2.GetStatus() == "FOUND"){
-					found_resource_count++;
-				}
-				//argos::LOG << found_resource_count << " resources found" << std::endl;
-			}
-			else if(c2.GetStatus() == "DROPPED"){
-				dropped_resource = true;
-				std::vector<argos::CVector2> traj;
-				// argos::LOG << "Robot " << c2.GetId() << " has dropped a resource" << std::endl;			
-				// for (const auto& pos : temp_trajectories[c2.GetId()]) {
-				// 	argos::LOG << "(" << pos.GetX() << ", " << pos.GetY() << "), ";
-				// }
-				// argos::LOG << std::endl;
-				traj = temp_trajectories[c2.GetId()];
-				dropped_trajectories[c2.GetId()].push_back(traj);
-				counter_nest_history.push_back(counter_nest);
-				temp_trajectories.erase(c2.GetId()); // remove the trajectory from temp_trajectories
-			}
-			else {
-				// If the robot is not in the "FOUND" or "DROPPED" state but temp_trajectories contains its ID,
-				// it means the robot is moving towards the nest with a resource. Add its current position to the trajectory.
-				if(temp_trajectories.count(c2.GetId()) > 0) { 
-					temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
-					size_t trajectory_size = temp_trajectories[c2.GetId()].size();
-					// Check congestion every x positions in the trajectory
-					if (trajectory_size >= WINDOW_SIZE && (trajectory_size - WINDOW_SIZE) % STEP_SIZE == 0) {
-						// Determine the start and end indices for the current window
-						size_t start_index = trajectory_size - WINDOW_SIZE;
-						size_t end_index = trajectory_size;
-						// Obtain trajectory for the current window
-						std::vector<argos::CVector2> windowed_trajectory(temp_trajectories[c2.GetId()].begin() + start_index, temp_trajectories[c2.GetId()].begin() + end_index);
-						// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
-						//argos::LOG << "Robot " << c2.GetId() << " returning with indexes: " << start_index << " - " << end_index << std::endl;
-						// Call predictCongestion with the windowed trajectory
-						// bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
-						bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
-						//argos::LOG << "Robot " << c2.GetId() << " has a probability of congestion: " << p << std::endl;		
+			//if(c2.GetStatus() == "GAVE_UP"){
+			// if(c2.GetStatus() == "GAVE_UP" || c2.GetStatus() == "FOUND"){
+			// 	// argos::LOG << "Robot " << c2.GetId() << " has found a resource" << std::endl;
+			// 	temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
+			// 	if ( c2.GetStatus() == "FOUND"){
+			// 		found_resource_count++;
+			// 	}
+			// 	//argos::LOG << found_resource_count << " resources found" << std::endl;
+			// }
+			// else if(c2.GetStatus() == "DROPPED"){
+			// 	dropped_resource = true;
+			// 	std::vector<argos::CVector2> traj;
+			// 	// argos::LOG << "Robot " << c2.GetId() << " has dropped a resource" << std::endl;			
+			// 	// for (const auto& pos : temp_trajectories[c2.GetId()]) {
+			// 	// 	argos::LOG << "(" << pos.GetX() << ", " << pos.GetY() << "), ";
+			// 	// }
+			// 	// argos::LOG << std::endl;
+			// 	traj = temp_trajectories[c2.GetId()];
+			// 	dropped_trajectories[c2.GetId()].push_back(traj);
+			// 	counter_nest_history.push_back(counter_nest);
+			// 	temp_trajectories.erase(c2.GetId()); // remove the trajectory from temp_trajectories
+			// }
+			// else {
+			// 	// If the robot is not in the "FOUND" or "DROPPED" state but temp_trajectories contains its ID,
+			// 	// it means the robot is moving towards the nest with a resource. Add its current position to the trajectory.
+			// 	if(temp_trajectories.count(c2.GetId()) > 0) { 
+			// 		temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
+			// 		size_t trajectory_size = temp_trajectories[c2.GetId()].size();
+			// 		// Check congestion every x positions in the trajectory
+			// 		if (trajectory_size >= WINDOW_SIZE && (trajectory_size - WINDOW_SIZE) % STEP_SIZE == 0) {
+			// 			// Determine the start and end indices for the current window
+			// 			size_t start_index = trajectory_size - WINDOW_SIZE;
+			// 			size_t end_index = trajectory_size;
+			// 			// Obtain trajectory for the current window
+			// 			std::vector<argos::CVector2> windowed_trajectory(temp_trajectories[c2.GetId()].begin() + start_index, temp_trajectories[c2.GetId()].begin() + end_index);
+			// 			// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
+			// 			//argos::LOG << "Robot " << c2.GetId() << " returning with indexes: " << start_index << " - " << end_index << std::endl;
+			// 			// Call predictCongestion with the windowed trajectory
+			// 			// bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
+			// 			bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
+			// 			//argos::LOG << "Robot " << c2.GetId() << " has a probability of congestion: " << p << std::endl;		
 
-						//c2.SetCongestion(drop);
-						// debugging
-						// check if robot is further than 1 unit from the nest
-						if (euclideanDistance(c2.GetPosition().GetX(), c2.GetPosition().GetY(), 0, 0) < 2) {
-							//argos::LOG << "Robot " << c2.GetId() << " is further than 1 unit from the nest" << std::endl;						
-							if (drop) {
-								c2.SetCongestion(drop);
-								resources_dropped++;
-								temp_trajectories.erase(c2.GetId());
-								argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index <<std::endl;
-							}
-						}
+			// 			// debugging
+			// 			// check if robot is further than 1 unit from the nest
+			// 			// if (euclideanDistance(c2.GetPosition().GetX(), c2.GetPosition().GetY(), 0, 0) < 2) {
+			// 			// 	//argos::LOG << "Robot " << c2.GetId() << " is further than 1 unit from the nest" << std::endl;
+							
+			// 			// 	if (drop) {
+			// 			// 		resources_dropped++;
+			// 			// 		c2.SetCongestion(drop);
+			// 			// 		//resources_dropped++;
+			// 			// 		temp_trajectories.erase(c2.GetId());
+			// 			// 		// argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index <<std::endl;
+								
+			// 			// 	}
+			// 			// }
 
-						// if (drop) {
-						// 	//argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index <<std::endl;
-						// 	// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
-						// 	resources_dropped++;
-						// 	//argos:LOG << resources_dropped << " resources dropped" << std::endl;
-						// 	temp_trajectories.erase(c2.GetId());
-						// }
-					}
-				}
-			}
+			// 			if (drop) {
+			// 				//argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index <<std::endl;
+			// 				// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
+			// 				resources_dropped++;
+			// 				c2.SetCongestion(drop);
+			// 				//argos:LOG << resources_dropped << " resources dropped" << std::endl;
+			// 				temp_trajectories.erase(c2.GetId());
+			// 			}
+			// 		}
+			// 	}
+			// }
 		
 	}
 	if (dropped_resource) {
@@ -485,8 +487,8 @@ void CPFA_loop_functions::PostExperiment() {
     //  printf("%f, %f, %lu\n", score, getSimTimeInSeconds(), RandomSeed);
     //  printf("%f\n", score);  
 	argos::LOG << resources_dropped << " resources dropped" << std::endl;
-	//get number of resources with 1 unit of the nest
-	
+
+	argos::LOG << found_resource_count << " resources found" << std::endl;	
 
     if (PrintFinalScore == 1) {
         string type="";

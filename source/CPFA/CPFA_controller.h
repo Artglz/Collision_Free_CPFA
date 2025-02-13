@@ -134,7 +134,9 @@ class CPFA_controller : public BaseController {
 
 		void UpdateTargetRayList();
 
-		
+		const size_t WINDOW_SIZE = 300;
+		const size_t STEP_SIZE = 100;	
+		std::vector<argos::CVector2> returning_trajectory;	
 		bool IsInCongestion();
 
 		CVector2 previous_position;
@@ -148,7 +150,7 @@ class CPFA_controller : public BaseController {
 		const int DROP_COOLDOWN = 75; // Time before a robot can re-collect its own drop
 		std::unordered_map<argos::CVector2, int, Vector2Hash, Vector2Equal> foodTargetCount; // Track how many robots are targeting each resource
 		const int MAX_ROBOTS_PER_RESOURCE = 1; // Max robots that can target the same resource
-
+		int resources_dapu = 0;
 		unsigned int survey_count;
 		/* Pointer to the LEDs actuator */
         CCI_LEDsActuator* m_pcLEDs;
