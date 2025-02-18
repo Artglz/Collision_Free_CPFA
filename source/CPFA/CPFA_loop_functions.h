@@ -32,7 +32,7 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 	public:
 
 		CPFA_loop_functions();
-	   
+	   	int totalResourcesPickedUp = 0;
 		void Init(argos::TConfigurationNode &t_tree);
 		void Reset();
 		void PreStep();

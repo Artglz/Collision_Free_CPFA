@@ -353,7 +353,7 @@ void CPFA_loop_functions::PostExperiment() {
     //  printf("%f\n", score);  
 	// argos::LOG << resources_dropped << " resources dropped" << std::endl;
 
-	// argos::LOG << found_resource_count << " resources found" << std::endl;	
+	argos::LOG << totalResourcesPickedUp << " resources picked up" << std::endl;	
 
     if (PrintFinalScore == 1) {
         string type="";
