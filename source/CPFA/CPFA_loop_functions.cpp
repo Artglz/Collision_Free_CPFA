@@ -316,142 +316,7 @@ void CPFA_loop_functions::dropResource(string robot_id) {
 
 
 void CPFA_loop_functions::PostStep() {
-
-	// get x,y coordinate of each robot
-	argos::CVector2 position;
-	vector<argos::CVector2> robotPosList2;
-	argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
-	//dictionary that holds the robot id as a key and the trajectory of the robot that has dropped a resource up to the last 50 values.
-	//std::map<std::string, std::vector<argos::CVector2>> dropped_trajectories;
-	const size_t WINDOW_SIZE = 300;
-	const size_t STEP_SIZE = 100;
 	
-	robotPosList.clear();
-	//robotPosList2.clear();
-
-	bool dropped_resource = false;
-	//print timestep
-	//argos::LOG << "timestep: " << GetSpace().GetSimulationClock() << std::endl;
-	size_t counter_nest = 0;
-	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
-	  argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-	  BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-	  CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-	  //get distance from position to nest(0,0)
-	  position = c2.GetPosition();
-	  double distance = sqrt(pow(position.GetX(), 2) + pow(position.GetY(), 2));
-	  //if distance is less than 1 increment counter
-	  if(distance < 5){
-		counter_nest++;
-	  }	
-	}
-	//collisions occured
-	size_t collision_count = 0;
-	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
-	  argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-	  BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-	  CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-		const argos::CCI_FootBotProximitySensor::TReadings& tProxReads = c2.GetProximitySensorReadings();
-
-		for(size_t i = 0; i < tProxReads.size(); ++i) {
-			if(tProxReads[i].Value > m_collision_threshold) { // Define a threshold to consider it a collision
-				// Handle collision
-				//argos::LOG << "Collision detected for robot " << c2.GetId() << std::endl;
-				collision_count++;
-				break;
-			}
-		}
-
-	  position = c2.GetPosition();
-	  robotPosList[c2.GetId()] = position;
-
-	  //robotPosList2.push_back(position);
-	  robotPosList3[c2.GetId()].push_back(position);
-		// if(c2.GetStatus() == "DROPPED"){
-		// 	dropped_resource = true;
-		// 	argos::LOG << "Robot " << c2.GetId() << " has dropped a resource" << std::endl;
-		// 	std::vector<argos::CVector2> traj;
-		// 	traj.assign(robotPosList3[c2.GetId()].end() - 100, robotPosList3[c2.GetId()].end());
-
-		// 	dropped_trajectories[c2.GetId()].push_back(traj);
-		// 	counter_nest_history.push_back(counter_nest);
-		// }
-
-			//if(c2.GetStatus() == "GAVE_UP"){
-			// if(c2.GetStatus() == "GAVE_UP" || c2.GetStatus() == "FOUND"){
-			// 	// argos::LOG << "Robot " << c2.GetId() << " has found a resource" << std::endl;
-			// 	temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
-			// 	if ( c2.GetStatus() == "FOUND"){
-			// 		found_resource_count++;
-			// 	}
-			// 	//argos::LOG << found_resource_count << " resources found" << std::endl;
-			// }
-			// else if(c2.GetStatus() == "DROPPED"){
-			// 	dropped_resource = true;
-			// 	std::vector<argos::CVector2> traj;
-			// 	// argos::LOG << "Robot " << c2.GetId() << " has dropped a resource" << std::endl;			
-			// 	// for (const auto& pos : temp_trajectories[c2.GetId()]) {
-			// 	// 	argos::LOG << "(" << pos.GetX() << ", " << pos.GetY() << "), ";
-			// 	// }
-			// 	// argos::LOG << std::endl;
-			// 	traj = temp_trajectories[c2.GetId()];
-			// 	dropped_trajectories[c2.GetId()].push_back(traj);
-			// 	counter_nest_history.push_back(counter_nest);
-			// 	temp_trajectories.erase(c2.GetId()); // remove the trajectory from temp_trajectories
-			// }
-			// else {
-			// 	// If the robot is not in the "FOUND" or "DROPPED" state but temp_trajectories contains its ID,
-			// 	// it means the robot is moving towards the nest with a resource. Add its current position to the trajectory.
-			// 	if(temp_trajectories.count(c2.GetId()) > 0) { 
-			// 		temp_trajectories[c2.GetId()].push_back(c2.GetPosition());
-			// 		size_t trajectory_size = temp_trajectories[c2.GetId()].size();
-			// 		// Check congestion every x positions in the trajectory
-			// 		if (trajectory_size >= WINDOW_SIZE && (trajectory_size - WINDOW_SIZE) % STEP_SIZE == 0) {
-			// 			// Determine the start and end indices for the current window
-			// 			size_t start_index = trajectory_size - WINDOW_SIZE;
-			// 			size_t end_index = trajectory_size;
-			// 			// Obtain trajectory for the current window
-			// 			std::vector<argos::CVector2> windowed_trajectory(temp_trajectories[c2.GetId()].begin() + start_index, temp_trajectories[c2.GetId()].begin() + end_index);
-			// 			// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
-			// 			//argos::LOG << "Robot " << c2.GetId() << " returning with indexes: " << start_index << " - " << end_index << std::endl;
-			// 			// Call predictCongestion with the windowed trajectory
-			// 			// bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
-			// 			bool drop = predictCongestion(start_index, end_index, windowed_trajectory);
-			// 			//argos::LOG << "Robot " << c2.GetId() << " has a probability of congestion: " << p << std::endl;		
-
-			// 			// debugging
-			// 			// check if robot is further than 1 unit from the nest
-			// 			// if (euclideanDistance(c2.GetPosition().GetX(), c2.GetPosition().GetY(), 0, 0) < 2) {
-			// 			// 	//argos::LOG << "Robot " << c2.GetId() << " is further than 1 unit from the nest" << std::endl;
-							
-			// 			// 	if (drop) {
-			// 			// 		resources_dropped++;
-			// 			// 		c2.SetCongestion(drop);
-			// 			// 		//resources_dropped++;
-			// 			// 		temp_trajectories.erase(c2.GetId());
-			// 			// 		// argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index <<std::endl;
-								
-			// 			// 	}
-			// 			// }
-
-			// 			if (drop) {
-			// 				//argos::LOG << "Robot " << c2.GetId() << " is congested with indexes: " << start_index << " - " << end_index <<std::endl;
-			// 				// argos::LOG << "Trajectory Size: " << windowed_trajectory.size() << std::endl;
-			// 				resources_dropped++;
-			// 				c2.SetCongestion(drop);
-			// 				//argos:LOG << resources_dropped << " resources dropped" << std::endl;
-			// 				temp_trajectories.erase(c2.GetId());
-			// 			}
-			// 		}
-			// 	}
-			// }
-		
-	}
-	if (dropped_resource) {
-		collision_history.push_back(collision_count);
-	}
-	
-
 }
 
 bool CPFA_loop_functions::IsExperimentFinished() {
@@ -486,9 +351,9 @@ void CPFA_loop_functions::PostExperiment() {
 	  
     //  printf("%f, %f, %lu\n", score, getSimTimeInSeconds(), RandomSeed);
     //  printf("%f\n", score);  
-	argos::LOG << resources_dropped << " resources dropped" << std::endl;
+	// argos::LOG << resources_dropped << " resources dropped" << std::endl;
 
-	argos::LOG << found_resource_count << " resources found" << std::endl;	
+	// argos::LOG << found_resource_count << " resources found" << std::endl;	
 
     if (PrintFinalScore == 1) {
         string type="";
