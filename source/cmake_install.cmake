@@ -1,4 +1,4 @@
-# Install script for directory: /home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source
+# Install script for directory: /Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,8 +39,8 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/Base/cmake_install.cmake")
-  include("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/cmake_install.cmake")
+  include("/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source/Base/cmake_install.cmake")
+  include("/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/cmake_install.cmake")
 
 endif()
 

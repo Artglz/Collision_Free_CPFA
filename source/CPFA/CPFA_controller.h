@@ -104,9 +104,6 @@ class CPFA_controller : public BaseController {
 			SEARCHING = 1,
 			RETURNING = 2,
 			SURVEYING = 3,
-			DROPPED = 4,
-			FOUND = 5,
-			GAVE_UP = 6
 		} CPFA_state;
 
 		/* iAnt CPFA state functions */
@@ -115,9 +112,7 @@ class CPFA_controller : public BaseController {
 		void Searching();
 		void Returning();
 		void Surveying();
-		void Dropped();
-		void Found();
-		void Gave_Up();
+
 		/* CPFA helper functions */
 		void SetRandomSearchLocation();
 		void SetHoldingFood();
@@ -134,8 +129,8 @@ class CPFA_controller : public BaseController {
 
 		void UpdateTargetRayList();
 
-		const size_t WINDOW_SIZE = 300;
-		const size_t STEP_SIZE = 100;	
+		const size_t WINDOW_SIZE = 150;
+		const size_t STEP_SIZE = 50;	
 		std::vector<argos::CVector2> returning_trajectory;	
 		bool IsInCongestion();
 
@@ -144,7 +139,7 @@ class CPFA_controller : public BaseController {
 		string results_path;
 		string results_full_path;
 		bool isUsingPheromone;
-
+		int reroute_attempts = 0;
 		bool isCongested = false;
 		std::unordered_map<std::string, int> dropCooldownMap; // Track when each robot last dropped a resource
 		const int DROP_COOLDOWN = 75; // Time before a robot can re-collect its own drop
@@ -154,6 +149,13 @@ class CPFA_controller : public BaseController {
 		unsigned int survey_count;
 		/* Pointer to the LEDs actuator */
         CCI_LEDsActuator* m_pcLEDs;
+
+		double optimal_distance = 0.08 * 150;
+		double previous_ratio_distance = -1;  
+		double previous_ratio_distance_lag_1 = -1;  
+	
+		double previous_angle = -1;  
+		double previous_angle_lag_1 = -1;  
 };
 
 #endif /* CPFA_CONTROLLER_H */

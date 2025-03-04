@@ -222,15 +222,37 @@ double CPFA_loop_functions::sigmoid(double z) {
     return 1.0 / (1.0 + exp(-z));
 }
 
+double CPFA_loop_functions::calculateAngle(const argos::CVector2& p1, const argos::CVector2& p2, const argos::CVector2& p3){
+	// Vectors
+	double dx1 = p2.GetX() - p1.GetX();
+	double dy1 = p2.GetY() - p1.GetY();
+	double dx2 = p3.GetX() - p2.GetX();
+	double dy2 = p3.GetY() - p2.GetY();
+
+	// Dot product and magnitudes
+	double dot_product = dx1 * dx2 + dy1 * dy2;
+	double mag_v1 = sqrt(dx1 * dx1 + dy1 * dy1);
+	double mag_v2 = sqrt(dx2 * dx2 + dy2 * dy2);
+
+	double angle = 0.0;
+	if (mag_v1 > 0 && mag_v2 > 0) {
+		double cosine_angle = dot_product / (mag_v1 * mag_v2);
+		cosine_angle = std::clamp(cosine_angle, -1.0, 1.0); // Clamp for stability
+		angle = acos(cosine_angle) * (180.0 / M_PI); // Convert to degrees
+	}
+	
+	return angle;
+}
+
 // Function to calculate features and predict congestion
-bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index, const std::vector<argos::CVector2>& coordinates) {
-    // Validate indices
+bool CPFA_loop_functions::predictCongestion(size_t indexes, const std::vector<argos::CVector2>& coordinates, double ratio_distance_lag_1, double ratio_distance_lag_2, double angle_lag_1, double angle_lag_2) {
+	// Validate indices
     // if (start_index >= end_index || end_index > coordinates.size() || coordinates.size() < 50) {
     //     std::cerr << "Error: Invalid indices or insufficient coordinates (expected at least 50).\n";
     //     return false;
     // }
     // Load model parameters from JSON
-    std::ifstream file("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/logistic_model.json");
+    std::ifstream file("/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/logistic_model_more_features.json");
     if (!file.is_open()) {
         std::cerr << "Error: Could not open logistic_model.json.\n";
         return false;
@@ -238,25 +260,31 @@ bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index
     Json::Value modelParams;
     file >> modelParams;
 
+	size_t start_index = coordinates.size() - 150;
+	size_t end_index = coordinates.size();
+
 	// if (!modelParams["intercept"].isDouble()) {
 	// 	std::cerr << "Error: 'intercept' is not a double. Value: " << modelParams["intercept"] << std::endl;
 	// }
     // Extract coefficients
     double intercept = modelParams["intercept"][0].asDouble();
-    double coef_start_index = modelParams["coefficients"][0].asDouble();
-    double coef_end_index = modelParams["coefficients"][1].asDouble();
-    double coef_ratio_distance = modelParams["coefficients"][2].asDouble();
-    double coef_angle = modelParams["coefficients"][3].asDouble();
+	double coef_ratio_distance = modelParams["coefficients"][0][0].asDouble();
+	double coef_angle = modelParams["coefficients"][0][1].asDouble();
+    double coef_indexes = modelParams["coefficients"][0][2].asDouble();
+	double coef_ratio_distance_lag_1 = modelParams["coefficients"][0][3].asDouble();
+	double coef_angle_lag_1 = modelParams["coefficients"][0][4].asDouble();
+    double coef_indexes_lag_1 = modelParams["coefficients"][0][5].asDouble();	
+	double coef_ratio_distance_lag_2 = modelParams["coefficients"][0][6].asDouble();
+	double coef_angle_lag_2 = modelParams["coefficients"][0][7].asDouble();
+    double coef_indexes_lag_2 = modelParams["coefficients"][0][8].asDouble();	
+
+
 	//print all the coefficients
-	// argos::LOG << "intercept: " << intercept << std::endl;
-	// argos::LOG << "coef_start_index: " << coef_start_index << std::endl;
-	// argos::LOG << "coef_end_index: " << coef_end_index << std::endl;
-	// argos::LOG << "coef_ratio_distance: " << coef_ratio_distance << std::endl;
-	// argos::LOG << "coef_angle: " << coef_angle << std::endl;
+	//argos::LOG << "intercept: " << intercept << " coef_ratio_distance: " << coef_ratio_distance << " coef_angle: " << coef_angle << " coef_indexes: " << coef_indexes << " coef_ratio_distance_lag_1: " << coef_ratio_distance_lag_1 << " coef_angle_lag_1: " << coef_angle_lag_1 << " coef_indexes_lag_1: " << coef_indexes_lag_1 << " coef_ratio_distance_lag_2: " << coef_ratio_distance_lag_2 << " coef_angle_lag_2: " << coef_angle_lag_2 << " coef_indexes_lag_2: " << coef_indexes_lag_2 << std::endl;
 
 
     // Calculate optimal distance based on a constant velocity (e.g., 0.08 units per step)
-    double optimal_distance = 0.08 * (end_index - start_index);
+    double optimal_distance = 0.08 * 150;
 
     // Calculate start-to-end distance
     double start_to_end_distance = euclideanDistance(
@@ -265,8 +293,9 @@ bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index
     );
 
     // Calculate ratio_distance
-    double ratio_distance = (optimal_distance != 0) ? start_to_end_distance / optimal_distance : std::numeric_limits<double>::infinity();
-
+    double ratio_distance = start_to_end_distance / optimal_distance;
+	//log all the ratio distances
+	//argos::LOG << "ratio_distance: " << ratio_distance << "ratio_distance_lag_1: " << ratio_distance_lag_1 << "ratio_distance_lag_2: " << ratio_distance_lag_2 << std::endl;
     // Calculate angle using the angle calculator logic
     if (end_index - start_index < 3) {
         std::cerr << "Error: Insufficient points to calculate angles.\n";
@@ -296,12 +325,19 @@ bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index
         angle = acos(cosine_angle) * (180.0 / M_PI); // Convert to degrees
     }
 
+	//argos::LOG << "indexes: " << indexes << " " << indexes-100 << " " << indexes-200 << std::endl;
+
     // Logistic regression probability
-    double z = intercept +
-               (coef_start_index * static_cast<double>(start_index)) +
-               (coef_end_index * static_cast<double>(end_index)) +
-               (coef_ratio_distance * ratio_distance) +
-               (coef_angle * angle);
+	double z = intercept +
+			   (coef_indexes * static_cast<double>(indexes)) +
+			   (coef_ratio_distance * ratio_distance) +
+			   (coef_angle * angle) +
+			   (coef_ratio_distance_lag_1 * ratio_distance_lag_1) +
+			   (coef_angle_lag_1 * angle_lag_1) +
+			   (coef_indexes_lag_1 * static_cast<double>(indexes - 100)) +
+			   (coef_ratio_distance_lag_2 * ratio_distance_lag_2) +
+			   (coef_angle_lag_2 * angle_lag_2) +
+			   (coef_indexes_lag_2 * static_cast<double>(indexes - 200));
 
     double probability = sigmoid(z); // Ensure sigmoid function is defined
 
@@ -309,14 +345,8 @@ bool CPFA_loop_functions::predictCongestion(size_t start_index, size_t end_index
     return probability >= 0.5;
 }
 
-// drop resource function
-void CPFA_loop_functions::dropResource(string robot_id) {
-	argos::LOG << "Robot " << robot_id << " has dropped a resource due to congestion." << std::endl;
-}
-
-
 void CPFA_loop_functions::PostStep() {
-	
+	// cleaned this
 }
 
 bool CPFA_loop_functions::IsExperimentFinished() {
@@ -416,7 +446,7 @@ void CPFA_loop_functions::PostExperiment() {
     
         //dataOutput <<data.CollisionTime/16.0<<", "<< time_in_minutes << ", " << data.RandomSeed << endl;
         //dataOutput << Score() << ", "<<(CollisionTime-16*Score())/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
-        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", " << totalResourcesPickedUp << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
         dataOutput.close();
 
 		/*

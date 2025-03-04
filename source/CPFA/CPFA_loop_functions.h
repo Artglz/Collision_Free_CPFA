@@ -194,7 +194,8 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		// These are the main functions from my machine learning algorithm
 		double sigmoid(double z);
 		double euclideanDistance(double x1, double y1, double x2, double y2);
-		bool predictCongestion(size_t start_index, size_t end_index, const std::vector<argos::CVector2>& coordinates);
+		bool predictCongestion(size_t indexes, const std::vector<argos::CVector2>& coordinates, double ratio_distance_lag_1, double ratio_distance_lag_2, double angle_lag_1, double angle_lag_2);
+		double calculateAngle(const argos::CVector2& p1, const argos::CVector2& p2, const argos::CVector2& p3);
 		void dropResource(std::string robot_id);
 
 

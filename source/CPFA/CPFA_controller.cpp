@@ -190,19 +190,6 @@ void CPFA_controller::CPFA() {
 			//SetIsHeadingToNest(false);
 			Surveying();
 			break;
-		case DROPPED:
-			//argos::LOG << "Intersection" << std::endl;
-			//SetIsHeadingToNest(false);
-			Dropped();
-			break;
-		case FOUND:
-			//argos::LOG << "Intersection" << std::endl;
-			//SetIsHeadingToNest(false);
-			Found();
-			break;
-		case GAVE_UP:
-			Gave_Up();
-			break;
 	}
 }
 
@@ -411,15 +398,6 @@ void CPFA_controller::Departing()
 
 }
 
-void CPFA_controller::Found() {
-	CPFA_state = SURVEYING;
-	//CPFA_state = RETURNING;
-}
-
-void CPFA_controller::Gave_Up() {
-	CPFA_state = RETURNING;
-}
-
 void CPFA_controller::Searching() {
  //LOG<<"Searching..."<<endl;
 	// "scan" for food only every half of a second
@@ -577,18 +555,18 @@ void CPFA_controller::Surveying() {
 	}
 }
 
-
-void CPFA_controller::Dropped(){
-	CPFA_state = DEPARTING;
-}
-
-
 void CPFA_controller::Returning() {
     // Set velocity while returning to the nest
-    m_pcWheels->SetLinearVelocity(0.08f, 0.08f);
+	if (IsHoldingFood()) {
+		m_pcWheels->SetLinearVelocity(0.1f, 0.1f);  // Slightly higher speed for carrying robots
+	} else {
+		m_pcWheels->SetLinearVelocity(0.8f, 0.8f); // Slower speed for empty robots
+	}
+	
 
     // Check if the robot is either in the nest or in a congested area
     if (IsInTheNest()) {
+		returning_trajectory.clear();
         // Handle normal nest drop logic
         if (isHoldingFood) {
             num_targets_collected++; // Increment collected resource count
@@ -607,7 +585,7 @@ void CPFA_controller::Returning() {
             }
             TrailToShare.clear();
         }else{
-			argos::LOG << "Robot " << GetId() << " reached the nest with no food" << std::endl;
+			//argos::LOG << "Robot " << GetId() << " reached the nest with no food" << std::endl;
 		}
 
         // Decide next task: Site fidelity, pheromones, or random search
@@ -636,20 +614,21 @@ void CPFA_controller::Returning() {
     }
     else if (IsInCongestion()) {
        // Handle congestion-specific drop logic
+	   returning_trajectory.clear();
         if (isHoldingFood) {
             // Drop the resource at the current position
             argos::CVector2 dropPosition = GetPosition(); // Get the robot's current position
             LoopFunctions->CongestionDropList.push_back(dropPosition); // Add drop position to congestion list
 			//call function predict congestion from loop function
 			// LoopFunctions->PredictCongestion();
-
+			
 			// Storing the time this robot dropped a resource
 			dropCooldownMap[GetId()] = SimulationTick();
 			// Ensure dropped food is available for collection again
 			LoopFunctions->FoodList.push_back(dropPosition);
 			LoopFunctions->FoodColoringList.push_back(argos::CColor::RED); // Set food color if needed
             // Log the drop due to congestion
-            argos::LOG << "Robot " << GetId() << " dropped a resource due to congestion at: " << dropPosition << " " << SimulationTick() << std::endl;
+            // argos::LOG << "Robot " << GetId() << " dropped a resource due to congestion at: " << dropPosition << " " << SimulationTick() << std::endl;
 			// argos::LOG << "Congested with resource at: " <<  SimulationTick() << std::endl;
 			if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
 				SetIsHeadingToNest(false);
@@ -667,38 +646,74 @@ void CPFA_controller::Returning() {
 			}
 
 			isGivingUpSearch = false;
-			CPFA_state = DROPPED;
+			CPFA_state = DEPARTING;
 			isHoldingFood = false;
 			isCongested = false; // fixes problem where robot gets detected as congestion even thought it is not
 			travelingTime += SimulationTick() - startTime;
 			// startTime = SimulationTick();
 
         } else{
-			// Instead of searching immediately, the robot surveys its surroundings first
-			// argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Surveying before deciding where to go." << std::endl;
-
-			// CPFA_state = SURVEYING;
-			// survey_count = 0;  // Reset survey timer	
-
-			// If the robot is in congestion but has no food, resume searching
-			argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
+			// If the robot is in congestion but has no food, resume searching and stop going to nest
+			//argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
 			// argos::LOG << "Congested with no resource at: " <<  SimulationTick() << std::endl;
 			CPFA_state = SEARCHING;
+			isCongested = false;
 			SetRandomSearchLocation();
 		}
     }
     else {
         // If not in the nest or congestion, proceed towards the target
 
-		//write congestion logic here
+		// check if returning_trajectory is empty
+		if (returning_trajectory.empty()) {
+			// Handle the case where the trajectory is empty
+			// argos::LOG << "Returning trajectory is empty for robot " << GetId() << std::endl;
+			previous_ratio_distance_lag_1 = -1;
+			previous_ratio_distance = -1;
+			previous_angle_lag_1 = -1;
+			previous_angle = -1;
+		}
+		//Start logging the trajectory for congestion prediction
 		returning_trajectory.push_back(GetPosition());
 		if(returning_trajectory.size() >= WINDOW_SIZE && (returning_trajectory.size() - WINDOW_SIZE) % STEP_SIZE == 0){
 			//call predict congestion function
-			size_t start_index = returning_trajectory.size() - 300;
+			size_t start_index = returning_trajectory.size() - 150;
 			size_t end_index = returning_trajectory.size();		
+			size_t middle_index = (start_index + end_index) / 2;
 			std::vector<argos::CVector2> trajectory_segment(returning_trajectory.begin() + start_index, returning_trajectory.begin() + end_index);
-			bool drop = LoopFunctions->predictCongestion(start_index, end_index, trajectory_segment);
-			SetCongestion(drop);
+
+			// Calculate start-to-end distance
+			double start_to_end_distance = LoopFunctions->euclideanDistance(
+				returning_trajectory[start_index].GetX(), returning_trajectory[start_index].GetY(),
+				returning_trajectory[end_index].GetX(), returning_trajectory[end_index].GetY()
+			);
+
+			int indexes = start_index + end_index;
+
+			if(previous_ratio_distance_lag_1 != -1 && previous_angle_lag_1 != -1) {
+				// argos::LOG << "Robot " << GetId() << " is predicting congestion. " << start_index << " : " << end_index << std::endl;
+
+				bool drop = LoopFunctions->predictCongestion(indexes, trajectory_segment, 
+					previous_ratio_distance, previous_ratio_distance_lag_1, 
+					previous_angle, previous_angle_lag_1);
+				if(drop && (GetPosition() - LoopFunctions->NestPosition).Length() < 1.0){
+					SetCongestion(drop);
+					//reset all variables
+					argos::LOG << "Robot " << GetId() << " dropped a resource. " << start_index << "-" << end_index << " at " << GetPosition() << std::endl;
+					previous_ratio_distance_lag_1 = -1;
+					previous_ratio_distance = -1;
+					previous_angle_lag_1 = -1;
+					previous_angle = -1;
+					returning_trajectory.clear();
+				}
+				
+			}
+
+			previous_ratio_distance_lag_1 = previous_ratio_distance; // -1 , 20
+			previous_ratio_distance = start_to_end_distance / optimal_distance; // 20 , 22
+
+			previous_angle_lag_1 = previous_angle;
+			previous_angle = LoopFunctions->calculateAngle(returning_trajectory[start_index], returning_trajectory[middle_index], returning_trajectory[end_index]);		
 		 }
         if (IsAtTarget()) {
             // Perform random search adjustment if the target is reached
@@ -769,7 +784,7 @@ void CPFA_controller::SetHoldingFood() {
 					// if (dropCooldownMap.find(GetId()) != dropCooldownMap.end() &&
 					// 	(currentTime - dropCooldownMap[GetId()] < DROP_COOLDOWN)) {
 						
-					// 	argos::LOG << "⏳ Robot " << GetId() << " is still in cooldown and cannot pick up its own dropped resource at: " 
+					// 	argos::LOG << "Robot " << GetId() << " is still in cooldown and cannot pick up its own dropped resource at: " 
 					// 			<< LoopFunctions->FoodList[i] << " (Tick: " << currentTime << ")" << std::endl;
 						
 					// 	continue;  // Skip picking up its own recently dropped food
@@ -1112,9 +1127,6 @@ string CPFA_controller::GetStatus(){//qilu 10/22
     else if (CPFA_state ==SEARCHING)return "SEARCHING";
     else if (CPFA_state == RETURNING)return "RETURNING";
     else if (CPFA_state == SURVEYING) return "SURVEYING";
-	else if(CPFA_state == DROPPED) return "DROPPED";
-	else if(CPFA_state == FOUND) return "FOUND";
-	else if(CPFA_state == GAVE_UP) return "GAVE_UP";
     //else if (MPFA_state == INACTIVE) return "INACTIVE";
     else return "SHUTDOWN";
     
@@ -1125,9 +1137,6 @@ void CPFA_controller::setStatus(string status){
 	else if(status == "SEARCHING") CPFA_state = SEARCHING;
 	else if(status == "RETURNING") CPFA_state = RETURNING;
 	else if(status == "SURVEYING") CPFA_state = SURVEYING;
-	else if(status == "DROPPED") CPFA_state = DROPPED;
-	else if(status == "FOUND") CPFA_state = FOUND;
-	else if(status == "GAVE_UP") CPFA_state = GAVE_UP;
 	//else if(status == "INACTIVE") MPFA_state = INACTIVE;
 }
 
