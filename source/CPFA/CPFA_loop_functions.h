@@ -164,10 +164,11 @@ class CPFA_loop_functions : public argos::CLoopFunctions
       
                 vector<size_t>		ForageList;
 		argos::CVector2 NestPosition;
+		argos::CVector2 EntryPoint = {1.4, 0};
 		std::vector<argos::CVector2> CongestionDropList;
 	private:
-		bool SetupPythonEnvironment();
-		
+		bool isZoneActive = false;	
+			
 		size_t counter_nest; // Current count of robots near the nest
 		std::vector<size_t> counter_nest_history; 
 		std::vector<size_t> collision_history;

@@ -10,6 +10,8 @@
 #include <argos3/core/simulator/entity/floor_entity.h>
 //#include <cmath>
 
+#include <argos3/core/simulator/entity/floor_entity.h>
+#include <argos3/core/utility/datatypes/color.h>
 
 using namespace std;
 using namespace argos;
@@ -18,33 +20,21 @@ static unsigned int num_targets_collected = 0;
 
 class CPFA_loop_functions;
 #include <functional> // Required for std::hash
-
-struct Vector2Hash {
-    std::size_t operator()(const argos::CVector2& vec) const {
-        std::hash<argos::Real> hasher;
-        std::size_t hash1 = hasher(vec.GetX());
-        std::size_t hash2 = hasher(vec.GetY());
-        return hash1 ^ (hash2 << 1); // Combine the two hash values
-    }
-};
-
-struct Vector2Equal {
-    bool operator()(const argos::CVector2& lhs, const argos::CVector2& rhs) const {
-        return lhs.GetX() == rhs.GetX() && lhs.GetY() == rhs.GetY();
-    }
-};
+#include <argos3/plugins/simulator/visualizations/qt-opengl/qtopengl_widget.h>
 
 class CPFA_controller : public BaseController {
 
 	public:
 
 		CPFA_controller();
+		void DrawEntryPath();
+		// logic for spiral path
+		// bool CollisionDetection() override;
 
 		// CCI_Controller inheritence functions
 		void Init(argos::TConfigurationNode &node);
 		void ControlStep();
-		void Reset();
-
+		void Reset();		
 		bool IsHoldingFood();
 		bool IsUsingSiteFidelity();
 		bool IsInTheNest();
@@ -63,8 +53,48 @@ class CPFA_controller : public BaseController {
   Real curr_time_in_seconds; 
     Real last_time_in_seconds; 
         
+		bool CollisionDetection() override;
 		void SetCongestion(bool value);
-		std::vector<argos::CVector2> CongestionDropList;
+		int FindClosestPointOnPath(argos::CVector2 robotPos, std::vector<argos::CVector2> path);
+		argos::CVector2 EntryPoint = {1.4, 0};
+		std::vector<argos::CVector2> EntryPath = {
+			{1.2, 0.0}, {0.94, 0.70}, {0.33, 1.10}, {-0.39, 1.06}, {-0.92, 0.60}, 
+			{-1.08, -0.07}, {-0.80, -0.68}, {-0.23, -1.00}, {0.41, -0.92}, {0.85, -0.48}, 
+			{0.95, 0.12}, {0.67, 0.65}, {0.14, 0.89}, {-0.41, 0.78}, {-0.77, 0.37}, 
+			{-0.82, -0.16}, {-0.54, -0.60}, {-0.08, -0.78}, {0.39, -0.65}, {0.68, -0.28}, 
+			{0.69, 0.18}, {0.43, 0.54}, {0.02, 0.66}, {-0.36, 0.52}, {-0.58, 0.19}, 
+			{-0.56, -0.19}, {-0.32, -0.46}, {0.02, -0.54}, {0.32, -0.40}, {0.47, -0.12}, 
+			{0.43, 0.17}, {0.23, 0.38}, {-0.04, 0.41}, {-0.26, 0.29}, {-0.36, 0.07}, 
+			{-0.31, -0.15}, {-0.15, -0.28}, {0.05, -0.29}, {0.19, -0.19}, {0.24, -0.03}, 
+			{0.19, 0.11}, {0.08, 0.18}, {-0.04, 0.17}, {-0.11, 0.10}, {-0.12, 0.01}, 
+			{-0.08, -0.05}, {-0.03, -0.07}, {0.01, -0.05}, {0.02, -0.01}, {0.0, 0.0}
+		};
+		std::vector<argos::CVector2> ExitPath = {
+			{0.0, 0.0}, {-0.02, 0.01}, {-0.01, 0.05}, {0.03, 0.07}, {0.08, 0.05},
+			{0.12, -0.01}, {0.11, -0.10}, {0.04, -0.17}, {-0.08, -0.18}, {-0.19, -0.11},
+			{-0.24, 0.03}, {-0.19, 0.19}, {-0.05, 0.29}, {0.15, 0.28}, {0.31, 0.15},
+			{0.36, -0.07}, {0.26, -0.29}, {0.04, -0.41}, {-0.23, -0.38}, {-0.43, -0.17},
+			{-0.47, 0.12}, {-0.32, 0.40}, {-0.02, 0.54}, {0.32, 0.46}, {0.56, 0.19},
+			{0.58, -0.19}, {0.36, -0.52}, {-0.02, -0.66}, {-0.43, -0.54}, {-0.69, -0.18},
+			{-0.68, 0.28}, {-0.39, 0.65}, {0.08, 0.78}, {0.54, 0.60}, {0.82, 0.16},
+			{0.77, -0.37}, {0.41, -0.78}, {-0.14, -0.89}, {-0.67, -0.65}, {-0.95, -0.12},
+			{-0.85, 0.48}, {-0.41, 0.92}, {0.23, 1.00}, {0.80, 0.68}, {1.08, 0.07},
+			{0.92, -0.60}, {0.39, -1.06}, {-0.33, -1.10}, {-0.94, -0.70}, {-1.2, 0.0}
+		};
+		const argos::Real RestrictedZoneRadius = 1.3; // adjust this based on the path radius
+		bool IsInRestrictedZone(argos::CVector2 position);			
+		void setZoneActive(bool value);
+		bool isZoneActive = false;
+
+		int currentWaypointIndex;
+		enum CPFA_state {
+			DEPARTING = 0,
+			SEARCHING = 1,
+			RETURNING = 2,
+			SURVEYING = 3,
+			FOLLOWING_ENTRY_PATH = 4,
+			FOLLOWING_EXIT_PATH = 5
+		} CPFA_state;		
 
 	private:
   string 			controllerID;//qilu 07/26/2016
@@ -99,12 +129,14 @@ class CPFA_controller : public BaseController {
         
   
 		/* iAnt CPFA state variable */
-		enum CPFA_state {
-			DEPARTING = 0,
-			SEARCHING = 1,
-			RETURNING = 2,
-			SURVEYING = 3,
-		} CPFA_state;
+		// enum CPFA_state {
+		// 	DEPARTING = 0,
+		// 	SEARCHING = 1,
+		// 	RETURNING = 2,
+		// 	SURVEYING = 3,
+		// 	FOLLOWING_ENTRY_PATH = 4,
+		// 	FOLLOWING_EXIT_PATH = 5
+		// } CPFA_state;
 
 		/* iAnt CPFA state functions */
 		void CPFA();
@@ -112,6 +144,8 @@ class CPFA_controller : public BaseController {
 		void Searching();
 		void Returning();
 		void Surveying();
+		void FollowingEntryPath();
+		void FollowingExitPath();
 
 		/* CPFA helper functions */
 		void SetRandomSearchLocation();
@@ -143,7 +177,7 @@ class CPFA_controller : public BaseController {
 		bool isCongested = false;
 		std::unordered_map<std::string, int> dropCooldownMap; // Track when each robot last dropped a resource
 		const int DROP_COOLDOWN = 75; // Time before a robot can re-collect its own drop
-		std::unordered_map<argos::CVector2, int, Vector2Hash, Vector2Equal> foodTargetCount; // Track how many robots are targeting each resource
+		// std::unordered_map<argos::CVector2, int, Vector2Hash, Vector2Equal> foodTargetCount; // Track how many robots are targeting each resource
 		const int MAX_ROBOTS_PER_RESOURCE = 1; // Max robots that can target the same resource
 		int resources_dapu = 0;
 		unsigned int survey_count;

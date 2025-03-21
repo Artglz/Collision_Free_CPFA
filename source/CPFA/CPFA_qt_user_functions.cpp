@@ -89,6 +89,7 @@ void CPFA_qt_user_functions::DrawOnArena(CFloorEntity& entity) {
 	DrawFidelity();
 	DrawPheromones();
 	DrawNest();
+	DrawEntryPoint();
 
 	if(loopFunctions.DrawTargetRays == 1) DrawTargetRays();
 }
@@ -113,6 +114,14 @@ void CPFA_qt_user_functions::DrawNest() {
     DrawCylinder(nest_3d, CQuaternion(), loopFunctions.NestRadius, 0.008, CColor::GREEN);
 }
 
+// draw entry point from cpfa controller
+void CPFA_qt_user_functions::DrawEntryPoint() {
+    Real x_coordinate = loopFunctions.EntryPoint.GetX();
+    Real y_coordinate = loopFunctions.EntryPoint.GetY();
+	Real elevation = loopFunctions.NestElevation;
+	CVector3 entry_point_3d(x_coordinate, y_coordinate, elevation);
+	DrawCylinder(entry_point_3d, CQuaternion(), 0.08, 0.008, CColor::ORANGE);
+}
 
 void CPFA_qt_user_functions::DrawFood() {
 

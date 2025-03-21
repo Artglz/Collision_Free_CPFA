@@ -6,6 +6,7 @@
 #include <argos3/core/simulator/entity/floor_entity.h>
 #include <argos3/core/utility/math/ray3.h>
 #include <source/CPFA/CPFA_loop_functions.h>
+#include <source/CPFA/CPFA_controller.h>
 
 using namespace std;
 using namespace argos;
@@ -30,9 +31,9 @@ class CPFA_qt_user_functions : public argos::CQTOpenGLUserFunctions {
 		void DrawFidelity();
 		void DrawPheromones();
 		void DrawTargetRays();
+		void DrawEntryPoint();
 		
 		CPFA_loop_functions& loopFunctions;
- 
 };
 
 #endif /* CPFA_QT_USER_FUNCTIONS_H */

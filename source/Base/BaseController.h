@@ -34,9 +34,16 @@ class BaseController : public argos::CCI_Controller {
 
 		void Stop();
 		void Move();
+
+		virtual bool CollisionDetection();
+		void SetLeftTurn(argos::Real newTargetAngle);
+		void SetRightTurn(argos::Real newTargetAngle);
+		void PushMovement(size_t moveType, argos::Real moveSize);
+
+		void SetNextMovement();
+
 		bool Wait();
 		void Wait(size_t wait_time_in_seconds);
-
 		/*  time calculation functions */
 		size_t SimulationTick();
 		size_t SimulationTicksPerSecond();
@@ -97,7 +104,7 @@ class BaseController : public argos::CCI_Controller {
 		argos::CVector2 previous_pattern_position;
 	
 		std::stack<Movement> MovementStack;
-
+		argos::CVector2 GetCollisionVector();
 	private:
 
 		argos::CLoopFunctions& LF;
@@ -106,19 +113,19 @@ class BaseController : public argos::CCI_Controller {
 		argos::CVector2 TargetPosition;
 
 		/* private navigation helper functions */
-		void SetNextMovement();
+		// void SetNextMovement();
 		void SetTargetAngleDistance(argos::Real newAngleToTurnInDegrees);
 		void SetTargetTravelDistance(argos::Real newTargetDistance);
-		void SetLeftTurn(argos::Real newTargetAngle);
-		void SetRightTurn(argos::Real newTargetAngle);
+		// void SetLeftTurn(argos::Real newTargetAngle);
+		// void SetRightTurn(argos::Real newTargetAngle);
 		void SetMoveForward(argos::Real newTargetDistance);
 		void SetMoveBack(argos::Real newTargetDistance);
-		void PushMovement(size_t moveType, argos::Real moveSize);
+		// void PushMovement(size_t moveType, argos::Real moveSize);
 		void PopMovement();
 
 		/* collision detection functions */
-		bool CollisionDetection();
-		argos::CVector2 GetCollisionVector();
+		// bool CollisionDetection();
+		
 
 		bool heading_to_nest;
 

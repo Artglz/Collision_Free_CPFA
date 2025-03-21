@@ -1,4 +1,6 @@
 #include "BaseController.h"
+#include "source/CPFA/CPFA_controller.h"
+
 #include <random>
 
 using namespace std;
@@ -302,7 +304,7 @@ unsigned int BaseController::GetCollisionTime(){
  }
  
 bool BaseController::CollisionDetection() {
-
+	//log current CPFA State
 	argos::CVector2 collisionVector = GetCollisionVector();
 	argos::Real collisionAngle = ToDegrees(collisionVector.Angle()).GetValue();
 	bool isCollisionDetected = false;
@@ -361,7 +363,6 @@ void BaseController::Move() {
 
 	collisionFlag = CollisionDetection();
  //double randomNumber = RNG->Uniform(argos::CRange<double>(0.0, 1.0));//qilu 09/24/2016
- 
 	/* move based on the movement state flag */
 	switch(CurrentMovementState) {
 
