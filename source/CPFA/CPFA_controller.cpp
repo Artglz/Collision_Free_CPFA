@@ -228,42 +228,42 @@ bool CPFA_controller::CollisionDetection() {
 
 	// Here we are checking if a robot that is not on the path is in the restricted zone
 	// If it is, we want to turn away from the restricted zone
-	static size_t lastRestrictedZoneCheck = 0;
-	size_t currentTick = SimulationTick();
+	// static size_t lastRestrictedZoneCheck = 0;
+	// size_t currentTick = SimulationTick();
 
-	if (currentTick - lastRestrictedZoneCheck >= 50 * SimulationTicksPerSecond()) {
-		if (IsInRestrictedZone(GetPosition()) && (GetStatus() != "FOLLOWING_ENTRY_PATH" && GetStatus() != "FOLLOWING_EXIT_PATH") && isZoneActive) {
-			Stop();
-			isCollisionDetected = true;
-			collision_counter++;
-			while (MovementStack.size() > 0) MovementStack.pop();
+	// if (currentTick - lastRestrictedZoneCheck >= 50 * SimulationTicksPerSecond()) {
+	// 	if (IsInRestrictedZone(GetPosition()) && (GetStatus() != "FOLLOWING_ENTRY_PATH" && GetStatus() != "FOLLOWING_EXIT_PATH") && isZoneActive) {
+	// 		Stop();
+	// 		isCollisionDetected = true;
+	// 		collision_counter++;
+	// 		while (MovementStack.size() > 0) MovementStack.pop();
 
-			PushMovement(FORWARD, SearchStepSize);
+	// 		PushMovement(FORWARD, SearchStepSize);
 
-			Real randomNumber = RNG->Uniform(CRange<Real>(0.5, 1.0));
-			collisionDelay = currentTick + (size_t)(randomNumber * SimulationTicksPerSecond());
+	// 		Real randomNumber = RNG->Uniform(CRange<Real>(0.5, 1.0));
+	// 		collisionDelay = currentTick + (size_t)(randomNumber * SimulationTicksPerSecond());
 
-			// **Compute detour direction**
-			argos::CVector2 toCenter = LoopFunctions->NestPosition - GetPosition(); // Vector pointing to the center
-			argos::CRadians heading = GetHeading(); // Robots current heading
-			argos::CRadians toCenterAngle = toCenter.Angle(); // Angle toward the center
+	// 		// **Compute detour direction**
+	// 		argos::CVector2 toCenter = LoopFunctions->NestPosition - GetPosition(); // Vector pointing to the center
+	// 		argos::CRadians heading = GetHeading(); // Robots current heading
+	// 		argos::CRadians toCenterAngle = toCenter.Angle(); // Angle toward the center
 
-			// Compute the difference between robot's heading and the center of the restricted zone
-			argos::CRadians angleDifference = toCenterAngle - heading;
+	// 		// Compute the difference between robot's heading and the center of the restricted zone
+	// 		argos::CRadians angleDifference = toCenterAngle - heading;
 
-			//argos::LOG << "Robot " << GetId() << " is in the restricted zone." << std::endl;
-			if (angleDifference.GetValue() > 0) {
-				SetRightTurn(angleDifference.GetValue()); // Turn right away from the restricted zone
-				argos::LOG << "Robot " << GetId() << " turning RIGHT to avoid restricted zone with angle: " << angleDifference.GetValue() << std::endl;
-			} else {
-				SetLeftTurn(angleDifference.GetValue()); // Turn left away from the restricted zone
-				argos::LOG << "Robot " << GetId() << " turning LEFT to avoid restricted zone with angle: " << angleDifference.GetValue() << std::endl;
-			}
+	// 		//argos::LOG << "Robot " << GetId() << " is in the restricted zone." << std::endl;
+	// 		if (angleDifference.GetValue() > 0) {
+	// 			SetRightTurn(angleDifference.GetValue()); // Turn right away from the restricted zone
+	// 			argos::LOG << "Robot " << GetId() << " turning RIGHT to avoid restricted zone with angle: " << angleDifference.GetValue() << std::endl;
+	// 		} else {
+	// 			SetLeftTurn(angleDifference.GetValue()); // Turn left away from the restricted zone
+	// 			argos::LOG << "Robot " << GetId() << " turning LEFT to avoid restricted zone with angle: " << angleDifference.GetValue() << std::endl;
+	// 		}
 
-			lastRestrictedZoneCheck = currentTick;
-			return isCollisionDetected;
-		}
-	}
+	// 		lastRestrictedZoneCheck = currentTick;
+	// 		return isCollisionDetected;
+	// 	}
+	// }
 	
 	// this is the normal collision logic where a robot determines a where it is colliding with another robot and the turn it must take.
 	if(GoStraightAngleRangeInDegrees.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
@@ -460,7 +460,7 @@ void CPFA_controller::FollowingEntryPath() {
 	//argos::LOG << "Robot ID: " << controllerID << " is heading to: " << GetTarget() << std::endl;
 
 	if (IsInTheNest()) {
-
+		argos::LOG << "Executed " << currentWaypointIndex << " out of " << EntryPath.size() << " Waypoints" << std::endl;
 		if (isHoldingFood) {
 			num_targets_collected++;
 			LoopFunctions->currNumCollectedFood++;
@@ -489,55 +489,26 @@ void CPFA_controller::FollowingEntryPath() {
 		isHoldingFood = false;
 		travelingTime += SimulationTick() - startTime;
 		startTime = SimulationTick();
+
+		SetTarget(ExitPath[0]);
+		exitPathIndex = 1;
+
+		return;
 	}
 
 	if (IsAtTarget() && currentWaypointIndex < EntryPath.size()) {
 		SetTarget(EntryPath[currentWaypointIndex]);
 		currentWaypointIndex++;
-	} else if (currentWaypointIndex >= EntryPath.size()) {
-		SetTarget(LoopFunctions->NestPosition);
-		currentWaypointIndex = 0;
-		if (IsInTheNest()) {
-
-			if (isHoldingFood) {
-				num_targets_collected++;
-				LoopFunctions->currNumCollectedFood++;
-				LoopFunctions->setScore(num_targets_collected);
-			}
-	
-			// Decide next search strategy (pheromone/site fidelity/random)
-			// if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
-			//     SetIsHeadingToNest(false);
-			//     SetTarget(SiteFidelityPosition);
-			//     isInformed = true;
-			// }
-			// else if (SetTargetPheromone()) {
-			//     isInformed = true;
-			//     isUsingSiteFidelity = false;
-			// }
-			// else {
-			//     SetRandomSearchLocation();
-			//     isInformed = false;
-			//     isUsingSiteFidelity = false;
-			// }
-	
-			// Update robot state
-			isGivingUpSearch = false;
-			CPFA_state = FOLLOWING_EXIT_PATH;
-			isHoldingFood = false;
-			travelingTime += SimulationTick() - startTime;
-			startTime = SimulationTick();
-		}
 	}
 }
 
 void CPFA_controller::FollowingExitPath() {
     
-    if (currentWaypointIndex < ExitPath.size()) { //will keep following the path by setting each waypoint in the spiral as target
-        SetTarget(ExitPath[currentWaypointIndex]);
-        currentWaypointIndex++;
+    if (IsAtTarget() && exitPathIndex < ExitPath.size()) { //will keep following the path by setting each waypoint in the spiral as target
+        SetTarget(ExitPath[exitPathIndex]);
+        exitPathIndex++;
     } 
-	else { // Once that is done, we will check if tx`he robot will do site fidelity, pheromone trail, or random search
+	else if (exitPathIndex >= ExitPath.size()) { // Once that is done, we will check if the robot will do site fidelity, pheromone trail, or random search
 		if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
             SetIsHeadingToNest(false);
             SetTarget(SiteFidelityPosition); // Use site fidelity
@@ -553,6 +524,7 @@ void CPFA_controller::FollowingExitPath() {
             isUsingSiteFidelity = false;
         }
 
+		argos::LOG << "done with exit path... depating" << std::endl;
         // Update robot state
         isGivingUpSearch = false;
 		CPFA_state = DEPARTING;
