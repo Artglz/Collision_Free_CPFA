@@ -15,13 +15,11 @@
 
 #pragma push_macro("slots")
 #undef slots
-// #include "Python.h"
+#include "Python.h"
 #pragma pop_macro("slots")
 
 using namespace argos;
 using namespace std;
-
-static const size_t GENOME_SIZE = 7; // There are 7 parameters to evolve
 
 class CPFA_loop_functions : public argos::CLoopFunctions
 {
@@ -152,8 +150,6 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		argos::CRange<argos::Real>   ForageRangeY;
 		map<string, argos::CVector2> robotPosList; //qilu 06/2023
 		//vector<argos::CVector2> robotPosList; //qilu 06/2023
-		map<string, vector<argos::CVector2>> robotPosList3;
-
 		
                 Real   CollisionTime;
                 size_t currCollisionTime; 
@@ -163,64 +159,37 @@ class CPFA_loop_functions : public argos::CLoopFunctions
                 size_t Num_robots;
       
                 vector<size_t>		ForageList;
-		argos::CVector2 NestPosition;
-		argos::CVector2 EntryPoint = {1.4, 0};
-		std::vector<argos::CVector2> CongestionDropList;
+		argos::CVector2 NestPosition = {0, 0};
 	private:
-		bool isZoneActive = false;	
 			
-		size_t counter_nest; // Current count of robots near the nest
-		std::vector<size_t> counter_nest_history; 
-		std::vector<size_t> collision_history;
-		// vector<int> RunCongestion(std::vector<std::pair<double, double>> dataset);
-		vector<int> RunCongestion(const std::vector<argos::CVector2>& robotPosList2);
 		/* private helper functions */
 		void RandomFoodDistribution();
 		void ClusterFoodDistribution();
 		void PowerLawFoodDistribution();
 
-		// Add member variables for state information, communication, etc.
-		// Function to predict trajectory
-		//void PredictTrajectory();
-		void PredictTrajectory(std::vector<CVector2>& predicted_positions, const RobotState& state, Real time_horizon, Real time_step);
-		// Function to detect potential collisions
-		//void DetectCollisions();
-    	//void DetectCollisions(const std::vector<std::vector<CVector2>>& predicted_trajectories, std::vector<CollisionInfo>& collisions);
-		void DetectCollisions(const std::unordered_map<size_t, std::vector<CVector2>>& predicted_trajectories, std::vector<size_t>& collisions, std::vector<size_t>& intersections);
-		//make predicted_trajectories a dictionary 
-		//std::unordered_map<size_t, std::vector<CVector2>> predicted_trajectories;
-
-		bool DetectIntersection(const std::vector<CVector2>& trajectory1, const std::vector<CVector2>& trajectory2);
+		// Functions and variable to collect data for RL
+		std::vector<float> distanceToNestList; // this contains the distance to the nest for each robot, it will be cleared after each iteration
+		std::unordered_map<std::string, int> timesteps_returning_to_nest; // this contains the timesteps that each robot has been returning to the nest
+		std::unordered_map<std::string, int> collisions; // this contains the collisions while returning to nest
+		double optimal_distance_to_nest; // this is the optimal distance to the nest
+		std::vector<float> ratio_distance_list;
 
 		// These are the main functions from my machine learning algorithm
 		double sigmoid(double z);
 		double euclideanDistance(double x1, double y1, double x2, double y2);
 		bool predictCongestion(size_t indexes, const std::vector<argos::CVector2>& coordinates, double ratio_distance_lag_1, double ratio_distance_lag_2, double angle_lag_1, double angle_lag_2);
 		double calculateAngle(const argos::CVector2& p1, const argos::CVector2& p2, const argos::CVector2& p3);
-		void dropResource(std::string robot_id);
 
-
-		// Function to adjust path to avoid collisions
-		//void AdjustPath();
-    	void AdjustPath(std::vector<std::vector<CVector2>>& predicted_trajectories, const std::vector<CollisionInfo>& collisions);
+		// Setting up python environment
+		bool SetupPythonEnvironment();
+		// PyObject *pyFileName, *pyModule;
+		// PyObject *pyCongestion,	*pyCallCongestion,	*pyCongestionArgs;
 
         bool IsOutOfBounds(argos::CVector2 p, size_t length, size_t width);
 		bool IsCollidingWithNest(argos::CVector2 p);
 		bool IsCollidingWithFood(argos::CVector2 p);
 		double score;
 		int PrintFinalScore;
-		// PyObject *pyFileName, *pyModule;
-		// PyObject *pyCongestion,	*pyCallCongestion,	*pyCongestionArgs;
-		size_t found_resource_count = 0;
-		size_t resources_dropped = 0;
-		//std::vector<std::vector<CVector2>> m_predicted_trajectories; // Vector to store predicted trajectories for all robots
-		std::unordered_map<size_t, std::vector<CVector2>> m_predicted_trajectories;
-    	Real m_collision_threshold; // Distance threshold for detecting collisions
-		//map<string, vector<argos::CVector2>> dropped_trajectories;
-		std::map<std::string, std::vector<std::vector<argos::CVector2>>> dropped_trajectories;
-		std::map<std::string, vector<argos::CVector2>> temp_trajectories;
-		std::map<std::string, vector<argos::CVector2>> temp2_trajectories;
-		std::vector<argos::CVector2> dropped_trajectories2;
 };
 
 #endif /* CPFA_LOOP_FUNCTIONS_H */

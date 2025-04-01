@@ -91,7 +91,6 @@ void CPFA_loop_functions::Init(argos::TConfigurationNode &node) {
         NumDistributedFood = FoodItemCount;  
     }
     
-	m_collision_threshold = 0.1f;
 	// calculate the forage range and compensate for the robot's radius of 0.085m
 	argos::CVector3 ArenaSize = GetSpace().GetArenaSize();
 	argos::Real rangeX = (ArenaSize.GetX() / 2.0) - 0.085;
@@ -131,7 +130,7 @@ void CPFA_loop_functions::Init(argos::TConfigurationNode &node) {
   
 	ForageList.clear(); 
 	last_time_in_minutes=0;
-	// SetupPythonEnvironment();
+	//SetupPythonEnvironment();
  
 }
 
@@ -347,22 +346,64 @@ bool CPFA_loop_functions::predictCongestion(size_t indexes, const std::vector<ar
 
 void CPFA_loop_functions::PostStep() {
 	// cleaned this
-	// check if any robot picked up a resource, if so change isZoneActive to true
 	
-	if (!isZoneActive) {
-		argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
-		for (argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); ++it) {
-			argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-			BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-			CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-			if (c2.IsHoldingFood()) {
-				isZoneActive = true;
-				c2.setZoneActive(true);
-				argos::LOG << "Zone is active" << std::endl;
-				break;
+
+	// Get distance to nest
+	distanceToNestList.clear();
+	argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
+	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+		float distanceToNest = (c2.GetPosition() - NestPosition).Length();
+		distanceToNestList.push_back(distanceToNest);
+	}
+	// Count timesteps spent returning to nest
+	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+		if(c2.GetStatus() == "RETURNING") {
+			if(timesteps_returning_to_nest[c2.GetId()] == 0){
+				argos::CVector2 ResourcePickupPosition = c2.GetPosition();
 			}
+			timesteps_returning_to_nest[c2.GetId()] += 1;
+		}else{
+			timesteps_returning_to_nest[c2.GetId()] = 0;
 		}
 	}
+
+	// get number of collisions for each robot while returning to the nest
+	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+		if(c2.GetStatus() == "RETURNING") {
+			collisions[c2.GetId()] = c2.collisions_in_returning;
+		}
+	}
+
+	// Get the (actual distance / optimal distance) to the nest
+	ratio_distance_list.clear();
+	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+		if(c2.GetStatus() == "RETURNING") {
+			double optimal_distance = 0.08 * timesteps_returning_to_nest[c2.GetId()];
+			double actual_distance = (c2.GetPosition() - ResourcePickupPosition).Length();
+			double ratio_distance = actual_distance / optimal_distance;
+			ratio_distance_list.push_back(ratio_distance);
+		}
+	}	
+
+	// Get robots within 1 unit of nest
+
+	// Add total collisions
+
+	// get the mean ratio distance
+
+	
 
 }
 
@@ -493,46 +534,7 @@ void CPFA_loop_functions::PostExperiment() {
 		}
         
 		trajOutput.close();
-
-		std::ofstream droppedtrajOutput((header + "iAntDroppedTrajData.txt").c_str(), std::ios::app);
-
-		// Check if the file was successfully opened
-		if (!trajOutput) {
-			std::cerr << "Error opening file for writing dropped trajectories." << std::endl;
-			return;
-		}
-
-		// Write a header or label for the data (if required)
-		droppedtrajOutput << "Dropped Trajectories\n";
-
-		// Iterate through each robot's dropped trajectories
-		for (std::map<std::string, std::vector<std::vector<argos::CVector2>>>::iterator it = dropped_trajectories.begin(); it != dropped_trajectories.end(); ++it) {
-			const std::string& robotId = it->first;  // Robot ID
-			const std::vector<std::vector<argos::CVector2>>& trajectories = it->second;  // Vector of trajectories
-
-			// Iterate through each trajectory for the current robot
-			for (size_t i = 0; i < trajectories.size(); ++i) {
-				const std::vector<argos::CVector2>& trajectory = trajectories[i];
-
-				// Write the robot ID and trajectory index (optional for clarity)
-				droppedtrajOutput << "Robot: " << robotId << ", Nest Counter: " << counter_nest_history[i] << ", Collision Counter: " << collision_history[i] <<", Trajectory " << i + 1 << ":\n";
-
-				// Iterate through the positions in the trajectory
-				for (size_t j = 0; j < trajectory.size(); ++j) {
-					droppedtrajOutput << trajectory[j] << "; ";  // Write each position (CVector2)
-				}
-				droppedtrajOutput << "\n";  // Newline after each trajectory
-			}
-		}
-		
-		// droppedtrajOutput << "\nRobots near the nest at each timestep:\n";
-
-		// for (size_t i = 0; i < counter_nest_history.size(); ++i) {
-		// 	droppedtrajOutput << "Timestep " << i << ": " << counter_nest_history[i] << "\n";
-		// }
-
-		// Close the file after writing
-		droppedtrajOutput.close();       
+   
       }  
 
 	// get food collected for each robot at each timestep
@@ -874,6 +876,67 @@ void CPFA_loop_functions::ConfigureFromGenome(Real* g)
 	RateOfSiteFidelity                = g[4];
 	RateOfLayingPheromone             = g[5];
 	RateOfPheromoneDecay              = g[6];
+}
+
+bool CPFA_loop_functions::SetupPythonEnvironment(){
+
+	// Py_Initialize();
+	// if(Py_IsInitialized()){
+	// 	LOG << "Python version: " << Py_GetVersion() << endl;
+	// 	return 1;
+	// } else {
+	// 	LOGERR << "ERROR: Python failed to initialize." << endl;
+	// 	return 0;	
+	// }
+
+	
+	// PyObject *sys = PyImport_ImportModule("sys");
+	// PyObject *path = PyObject_GetAttrString(sys, "path");
+	// PyList_Append(path, PyUnicode_FromString("/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
+	// PyObject *repr = PyObject_Repr(path);
+	// const char* s = PyUnicode_AsUTF8(repr);
+	// printf("Python path: ");
+	// Py_DECREF(repr);
+	// Py_DECREF(path);
+	// Py_DECREF(sys);
+
+	// // Load the module
+	// pyFileName = PyUnicode_FromString("congestion");
+	// if (pyFileName == NULL) {
+	// 	LOG << "Error converting module name to PyUnicode" << std::endl;
+	// 	Py_Finalize();
+	// 	return 0;
+	// }
+
+	// pyModule = PyImport_Import(pyFileName);
+	// Py_DECREF(pyFileName);
+
+	// if (pyModule == NULL) {
+	// 	LOG << "Failed to load Python module" << std::endl;
+	// 	Py_Finalize();
+	// 	return 0;
+	// }
+
+	// // Load the function from the module
+	// pyCongestion = PyObject_GetAttrString(pyModule, "run_congestion_logic");
+	// Py_DECREF(pyModule);
+
+	// if (pyCongestion == NULL || !PyCallable_Check(pyCongestion)) {
+	// 	if (PyErr_Occurred()) {
+	// 		PyErr_Print();
+	// 	}
+	// 	LOG << "Failed to load Python function" << std::endl;
+	// 	Py_XDECREF(pyCongestion);
+	// 	Py_Finalize();
+	// 	return 0;
+	// }
+	// // PyObject *result = PyObject_CallObject(pyCongestion, NULL);
+    // // PyObject* str = PyObject_Repr(result);
+    // // const char* c_str = PyUnicode_AsUTF8(str);
+    // // printf("Python function returned: %s\n", c_str);
+    // // Py_XDECREF(str);
+	// return 1;
+
 }
 
 

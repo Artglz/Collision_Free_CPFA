@@ -190,14 +190,6 @@ void CPFA_controller::CPFA() {
 			//SetIsHeadingToNest(false);
 			Surveying();
 			break;
-		case FOLLOWING_ENTRY_PATH:
-			//argos::LOG << "FOLLOWING_ENTRY_PATH" << std::endl;
-			FollowingEntryPath();
-			break;
-		case FOLLOWING_EXIT_PATH:
-			//argos::LOG << "FOLLOWING_EXIT_PATH" << std::endl;
-			FollowingExitPath();
-			break;
 	}
 }
 
@@ -207,73 +199,23 @@ bool CPFA_controller::IsInTheNest() {
 		< LoopFunctions->NestRadiusSquared);
 }
 
-bool CPFA_controller::IsInRestrictedZone(argos::CVector2 position) {
-
-	// get the nest position and check if the robot is in the restricted zone
-	argos::CVector2 RestrictedZoneCenter = LoopFunctions->NestPosition;
-    return (position - RestrictedZoneCenter).SquareLength() < (RestrictedZoneRadius * RestrictedZoneRadius);
-}
-
-void CPFA_controller::setZoneActive(bool value) {
-	isZoneActive = value;
-}
-
-
 bool CPFA_controller::CollisionDetection() {
 	//log current CPFA State
 	argos::CVector2 collisionVector = GetCollisionVector();
 	argos::Real collisionAngle = ToDegrees(collisionVector.Angle()).GetValue();
 	bool isCollisionDetected = false;
-
-
-	// Here we are checking if a robot that is not on the path is in the restricted zone
-	// If it is, we want to turn away from the restricted zone
-	// static size_t lastRestrictedZoneCheck = 0;
-	// size_t currentTick = SimulationTick();
-
-	// if (currentTick - lastRestrictedZoneCheck >= 50 * SimulationTicksPerSecond()) {
-	// 	if (IsInRestrictedZone(GetPosition()) && (GetStatus() != "FOLLOWING_ENTRY_PATH" && GetStatus() != "FOLLOWING_EXIT_PATH") && isZoneActive) {
-	// 		Stop();
-	// 		isCollisionDetected = true;
-	// 		collision_counter++;
-	// 		while (MovementStack.size() > 0) MovementStack.pop();
-
-	// 		PushMovement(FORWARD, SearchStepSize);
-
-	// 		Real randomNumber = RNG->Uniform(CRange<Real>(0.5, 1.0));
-	// 		collisionDelay = currentTick + (size_t)(randomNumber * SimulationTicksPerSecond());
-
-	// 		// **Compute detour direction**
-	// 		argos::CVector2 toCenter = LoopFunctions->NestPosition - GetPosition(); // Vector pointing to the center
-	// 		argos::CRadians heading = GetHeading(); // Robots current heading
-	// 		argos::CRadians toCenterAngle = toCenter.Angle(); // Angle toward the center
-
-	// 		// Compute the difference between robot's heading and the center of the restricted zone
-	// 		argos::CRadians angleDifference = toCenterAngle - heading;
-
-	// 		//argos::LOG << "Robot " << GetId() << " is in the restricted zone." << std::endl;
-	// 		if (angleDifference.GetValue() > 0) {
-	// 			SetRightTurn(angleDifference.GetValue()); // Turn right away from the restricted zone
-	// 			argos::LOG << "Robot " << GetId() << " turning RIGHT to avoid restricted zone with angle: " << angleDifference.GetValue() << std::endl;
-	// 		} else {
-	// 			SetLeftTurn(angleDifference.GetValue()); // Turn left away from the restricted zone
-	// 			argos::LOG << "Robot " << GetId() << " turning LEFT to avoid restricted zone with angle: " << angleDifference.GetValue() << std::endl;
-	// 		}
-
-	// 		lastRestrictedZoneCheck = currentTick;
-	// 		return isCollisionDetected;
-	// 	}
-	// }
 	
 	// this is the normal collision logic where a robot determines a where it is colliding with another robot and the turn it must take.
 	if(GoStraightAngleRangeInDegrees.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
 		 && collisionVector.Length() > 0.0) {
 
-		// if a robot is following a path, we dont want to avoid collisions since paths dont overlap. So there will be no
-		// collisions as longs other robots don't interfere.
-		if(GetStatus() == "FOLLOWING_ENTRY_PATH" || GetStatus() == "FOLLOWING_EXIT_PATH") {
-			return isCollisionDetected;
+
+		if(GetStatus() == "RETURNING") {
+			collisions_in_returning++;
+		}else{
+			collisions_in_returning = 0;
 		}	 
+
 		Stop();
 		 isCollisionDetected = true;
 		 collision_counter++;
@@ -297,21 +239,6 @@ bool CPFA_controller::CollisionDetection() {
 
 	return isCollisionDetected;
 }
-
-int CPFA_controller::FindClosestPointOnPath(argos::CVector2 robotPos, std::vector<argos::CVector2> path) {
-    int closestPoint = 0;
-    argos::Real minDistance = (robotPos - path[0]).SquareLength();
-
-    for (size_t i = 1; i < path.size(); i++) {
-        argos::Real distance = (robotPos - path[i]).SquareLength();
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestPoint = i;
-        }
-    }
-    return closestPoint;
-}
-
 
 void CPFA_controller::SetCongestion(bool value){
 	// if num == 0{
@@ -454,87 +381,6 @@ void CPFA_controller::Departing()
 
 }
 
-void CPFA_controller::FollowingEntryPath() {
-	
-	// Log id and position where robot is heading
-	//argos::LOG << "Robot ID: " << controllerID << " is heading to: " << GetTarget() << std::endl;
-
-	if (IsInTheNest()) {
-		argos::LOG << "Executed " << currentWaypointIndex << " out of " << EntryPath.size() << " Waypoints" << std::endl;
-		if (isHoldingFood) {
-			num_targets_collected++;
-			LoopFunctions->currNumCollectedFood++;
-			LoopFunctions->setScore(num_targets_collected);
-		}
-
-		// Decide next search strategy (pheromone/site fidelity/random)
-		// if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
-		//     SetIsHeadingToNest(false);
-		//     SetTarget(SiteFidelityPosition);
-		//     isInformed = true;
-		// }
-		// else if (SetTargetPheromone()) {
-		//     isInformed = true;
-		//     isUsingSiteFidelity = false;
-		// }
-		// else {
-		//     SetRandomSearchLocation();
-		//     isInformed = false;
-		//     isUsingSiteFidelity = false;
-		// }
-
-		// Update robot state
-		isGivingUpSearch = false;
-		CPFA_state = FOLLOWING_EXIT_PATH;
-		isHoldingFood = false;
-		travelingTime += SimulationTick() - startTime;
-		startTime = SimulationTick();
-
-		SetTarget(ExitPath[0]);
-		exitPathIndex = 1;
-
-		return;
-	}
-
-	if (IsAtTarget() && currentWaypointIndex < EntryPath.size()) {
-		SetTarget(EntryPath[currentWaypointIndex]);
-		currentWaypointIndex++;
-	}
-}
-
-void CPFA_controller::FollowingExitPath() {
-    
-    if (IsAtTarget() && exitPathIndex < ExitPath.size()) { //will keep following the path by setting each waypoint in the spiral as target
-        SetTarget(ExitPath[exitPathIndex]);
-        exitPathIndex++;
-    } 
-	else if (exitPathIndex >= ExitPath.size()) { // Once that is done, we will check if the robot will do site fidelity, pheromone trail, or random search
-		if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
-            SetIsHeadingToNest(false);
-            SetTarget(SiteFidelityPosition); // Use site fidelity
-            isInformed = true;
-        }
-        else if (SetTargetPheromone()) {
-            isInformed = true;
-            isUsingSiteFidelity = false; // Follow pheromone waypoints
-        }
-        else {
-            SetRandomSearchLocation(); // Perform a random search
-            isInformed = false;
-            isUsingSiteFidelity = false;
-        }
-
-		argos::LOG << "done with exit path... depating" << std::endl;
-        // Update robot state
-        isGivingUpSearch = false;
-		CPFA_state = DEPARTING;
-        isHoldingFood = false;
-        travelingTime += SimulationTick() - startTime;
-        startTime = SimulationTick();
-    }
-}
-
-
 void CPFA_controller::Searching() {
  //LOG<<"Searching..."<<endl;
 	// "scan" for food only every half of a second
@@ -562,7 +408,6 @@ void CPFA_controller::Searching() {
              isUsingSiteFidelity = false; 
              updateFidelity = false; 
 			 CPFA_state = RETURNING;
-             //CPFA_state = GAVE_UP;
              searchingTime+=SimulationTick()-startTime;
              startTime = SimulationTick();
 
@@ -692,187 +537,106 @@ void CPFA_controller::Surveying() {
 	}
 }
 
-// void CPFA_controller::Returning() {
-//     // Set velocity while returning to the nest
-// 	if (IsHoldingFood()) {
-// 		m_pcWheels->SetLinearVelocity(0.1f, 0.1f);  // Slightly higher speed for carrying robots
-// 	} else {
-// 		m_pcWheels->SetLinearVelocity(0.8f, 0.8f); // Slower speed for empty robots
-// 	}
-	
-
-//     // Check if the robot is either in the nest or in a congested area
-//     if (IsInTheNest()) {
-// 		returning_trajectory.clear();
-//         // Handle normal nest drop logic
-//         if (isHoldingFood) {
-//             num_targets_collected++; // Increment collected resource count
-//             LoopFunctions->currNumCollectedFood++; // Update current collected food count
-//             LoopFunctions->setScore(num_targets_collected); // Update the score
-// 			//argos::LOG << "Resource collected by robot " << GetId() << " at tick " << SimulationTick() << std::endl;
-//             // Determine if pheromone should be placed
-//             argos::Real poissonCDF_pLayRate = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfLayingPheromone);
-//             argos::Real r1 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
-//             if (poissonCDF_pLayRate > r1 && updateFidelity) {
-//                 TrailToShare.push_back(LoopFunctions->NestPosition); // Add nest position to trail
-//                 argos::Real timeInSeconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond());
-//                 Pheromone sharedPheromone(SiteFidelityPosition, TrailToShare, timeInSeconds, LoopFunctions->RateOfPheromoneDecay, ResourceDensity);
-//                 LoopFunctions->PheromoneList.push_back(sharedPheromone); // Add pheromone to the list
-//                 sharedPheromone.Deactivate(); // Ensure it won't get re-added later
-//             }
-//             TrailToShare.clear();
-//         }else{
-// 			//argos::LOG << "Robot " << GetId() << " reached the nest with no food" << std::endl;
-// 		}
-
-//         // Decide next task: Site fidelity, pheromones, or random search
-//         if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
-//             SetIsHeadingToNest(false);
-//             SetTarget(SiteFidelityPosition); // Use site fidelity
-//             isInformed = true;
-//         }
-//         else if (SetTargetPheromone()) {
-//             isInformed = true;
-//             isUsingSiteFidelity = false; // Follow pheromone waypoints
-//         }
-//         else {
-//             SetRandomSearchLocation(); // Perform a random search
-//             isInformed = false;
-//             isUsingSiteFidelity = false;
-//         }
-
-//         // Update robot state
-//         isGivingUpSearch = false;
-//         // CPFA_state = DROPPED;
-// 		CPFA_state = DEPARTING;
-//         isHoldingFood = false;
-//         travelingTime += SimulationTick() - startTime;
-//         startTime = SimulationTick();
-//     }
-//     else if (IsInCongestion()) {
-//        // Handle congestion-specific drop logic
-// 	   returning_trajectory.clear();
-//         if (isHoldingFood) {			
-
-// 			// Find the closest segment on the spiral path
-// 			currentWaypointIndex = FindClosestPointOnPath(GetPosition(), EntryPath);	
-// 			// Set target to the closest point on the path and start following it
-// 			argos::LOG << "Robot " << GetId() << " joining congestion path: " << EntryPath[currentWaypointIndex] <<std::endl;
-// 			CPFA_state = FOLLOWING_ENTRY_PATH;
-// 			SetTarget(EntryPath[currentWaypointIndex]);
-
-// 			isGivingUpSearch = false;
-// 			isCongested = false; // fixes problem where robot gets detected as congestion even thought it is not
-// 			travelingTime += SimulationTick() - startTime;
-// 			// startTime = SimulationTick();
-
-//         // } else{
-// 		// 	// If the robot is in congestion but has no food, resume searching and stop going to nest
-// 		// 	//argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
-// 		// 	// argos::LOG << "Congested with no resource at: " <<  SimulationTick() << std::endl;
-// 		// 	CPFA_state = SEARCHING;
-// 		// 	isCongested = false;
-// 		// 	SetRandomSearchLocation();
-// 		}
-//     }
-//     else {
-//         // If not in the nest or congestion, proceed towards the target
-
-// 		// check if returning_trajectory is empty
-// 		if (returning_trajectory.empty()) {
-// 			// Handle the case where the trajectory is empty
-// 			// argos::LOG << "Returning trajectory is empty for robot " << GetId() << std::endl;
-// 			previous_ratio_distance_lag_1 = -1;
-// 			previous_ratio_distance = -1;
-// 			previous_angle_lag_1 = -1;
-// 			previous_angle = -1;
-// 		}
-// 		//Start logging the trajectory for congestion prediction
-// 		returning_trajectory.push_back(GetPosition());
-// 		if(returning_trajectory.size() >= WINDOW_SIZE && (returning_trajectory.size() - WINDOW_SIZE) % STEP_SIZE == 0){
-// 			//call predict congestion function
-// 			size_t start_index = returning_trajectory.size() - 150;
-// 			size_t end_index = returning_trajectory.size();		
-// 			size_t middle_index = (start_index + end_index) / 2;
-// 			std::vector<argos::CVector2> trajectory_segment(returning_trajectory.begin() + start_index, returning_trajectory.begin() + end_index);
-
-// 			// Calculate start-to-end distance
-// 			double start_to_end_distance = LoopFunctions->euclideanDistance(
-// 				returning_trajectory[start_index].GetX(), returning_trajectory[start_index].GetY(),
-// 				returning_trajectory[end_index].GetX(), returning_trajectory[end_index].GetY()
-// 			);
-
-// 			int indexes = start_index + end_index;
-
-// 			if(previous_ratio_distance_lag_1 != -1 && previous_angle_lag_1 != -1) {
-// 				// argos::LOG << "Robot " << GetId() << " is predicting congestion. " << start_index << " : " << end_index << std::endl;
-
-// 				bool drop = LoopFunctions->predictCongestion(indexes, trajectory_segment, 
-// 					previous_ratio_distance, previous_ratio_distance_lag_1, 
-// 					previous_angle, previous_angle_lag_1);
-// 				if(drop && (GetPosition() - LoopFunctions->NestPosition).Length() < 1.0){
-// 					SetCongestion(true);
-// 					//reset all variables
-// 					argos::LOG << "Robot " << GetId() << " dropped a resource. " << start_index << "-" << end_index << " at " << GetPosition() << std::endl;
-// 					previous_ratio_distance_lag_1 = -1;
-// 					previous_ratio_distance = -1;
-// 					previous_angle_lag_1 = -1;
-// 					previous_angle = -1;
-// 					returning_trajectory.clear();
-// 				}
-				
-// 			}
-
-// 			previous_ratio_distance_lag_1 = previous_ratio_distance; // -1 , 20
-// 			previous_ratio_distance = start_to_end_distance / optimal_distance; // 20 , 22
-
-// 			previous_angle_lag_1 = previous_angle;
-// 			previous_angle = LoopFunctions->calculateAngle(returning_trajectory[start_index], returning_trajectory[middle_index], returning_trajectory[end_index]);		
-// 		 }
-//         if (IsAtTarget()) {
-//             // Perform random search adjustment if the target is reached
-//             argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
-//             argos::Real rand = RNG->Gaussian(USCV);
-
-//             argos::CRadians rotation(rand);
-//             argos::CRadians angle1(rotation);
-//             argos::CRadians angle2(GetHeading());
-//             argos::CRadians turn_angle(angle1 + angle2);
-//             argos::CVector2 turn_vector(SearchStepSize, turn_angle);
-
-//             SetIsHeadingToNest(false);
-//             SetTarget(turn_vector + GetPosition());
-//         }
-//     }
-// }
-
 void CPFA_controller::Returning() {
-
-    // **Force all robots to follow the entry path!**
-	if (CPFA_state != FOLLOWING_ENTRY_PATH) {
-		static bool firstTime = true;
-		if (firstTime) {
-			argos::LOG << " Robot " << GetId() << " is headed towards the entry point" << std::endl;
-			firstTime = false;
-		}
+	//LOG<<"Returning..."<<endl;
+	   //SetHoldingFood();
+	   m_pcWheels->SetLinearVelocity(0.8f, 0.8f);
+	   // Are we there yet? (To the nest, that is.)
+	   if(IsInTheNest()) {
+		   // Based on a Poisson CDF, the robot may or may not create a pheromone
+		   // located at the last place it picked up food.
+		   argos::Real poissonCDF_pLayRate    = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfLayingPheromone);
+		   argos::Real poissonCDF_sFollowRate = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity);
+		   argos::Real r1 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
+		   argos::Real r2 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
+		   if (isHoldingFood) { 
+			 //drop off the food and display in the nest 
+			 //argos::CVector2 placementPosition;
+			 //placementPosition.Set(LoopFunctions->NestPosition.GetX()+RNG->Gaussian(LoopFunctions->NestRadius/1.2, 0.5), LoopFunctions->NestPosition.GetY()+RNG->Gaussian(LoopFunctions->NestRadius/1.2, 0.5));
+			 
+			 //while((placementPosition-LoopFunctions->NestPosition).SquareLength()>pow(LoopFunctions->NestRadius/2.0-LoopFunctions->FoodRadius, 2))
+			   //  placementPosition.Set(LoopFunctions->NestPosition.GetX()+RNG->Gaussian(LoopFunctions->NestRadius/1.2, 0.5), LoopFunctions->NestPosition.GetY()+RNG->Gaussian(LoopFunctions->NestRadius/1.2, 0.5));
 		
-		// Find the closest waypoint in the entry path
-		currentWaypointIndex = FindClosestPointOnPath(GetPosition(), EntryPath);
-		SetTarget(EntryPath[currentWaypointIndex]);
-		if (IsAtTarget()){
-			currentWaypointIndex += 1;
-			SetTarget(EntryPath[currentWaypointIndex]);
-			CPFA_state = FOLLOWING_ENTRY_PATH;
-		}
-
-		// CPFA_state = FOLLOWING_ENTRY_PATH;
-
-		// return;  // Exit early so the robot starts path-following
-	}
-
-    // **Nest Logic: Handle resource drop-off when reaching the nest**
-
-}
+			 //LoopFunctions->CollectedFoodList.push_back(placementPosition);
+			 //Update the location of the nest qilu 09/10
+			 num_targets_collected++;
+			 //argos::LOG <<"num_targets_collected = "<<num_targets_collected<< endl;
+			 LoopFunctions->currNumCollectedFood++;
+			 LoopFunctions->setScore(num_targets_collected);
+			 if(poissonCDF_pLayRate > r1 && updateFidelity) {
+				   TrailToShare.push_back(LoopFunctions->NestPosition); //qilu 07/26/2016
+				   argos::Real timeInSeconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond());
+				   Pheromone sharedPheromone(SiteFidelityPosition, TrailToShare, timeInSeconds, LoopFunctions->RateOfPheromoneDecay, ResourceDensity);
+				   LoopFunctions->PheromoneList.push_back(sharedPheromone);
+				   sharedPheromone.Deactivate(); // make sure this won't get re-added later...
+				   //argos::LOG <<"TrailToShare size =" << TrailToShare.size() << endl;
+				   //argos::LOG <<"LoopFunctions->PheromoneList size =" << LoopFunctions->PheromoneList.size() << endl;
+			 }
+			 TrailToShare.clear();  
+		   }
+   
+		   // Determine probabilistically whether to use site fidelity, pheromone
+		   // trails, or random search.
+		   //ofstream log_output_stream;
+		   //log_output_stream.open("cpfa_log.txt", ios::app);
+		   //log_output_stream << "At the nest." << endl;	    
+		
+		   // use site fidelity
+		   if(updateFidelity && poissonCDF_sFollowRate > r2) {
+			   //log_output_stream << "Using site fidelity" << endl;
+				   SetIsHeadingToNest(false);
+				   SetTarget(SiteFidelityPosition);
+				   isInformed = true;
+		   }
+		 // use pheromone waypoints
+		 else if(SetTargetPheromone()) {
+			 //log_output_stream << "Using site pheremone" << endl;
+			 isInformed = true;
+			 isUsingSiteFidelity = false;
+		 }
+		  // use random search
+		 else {
+			  //log_output_stream << "Using random search" << endl;
+			   SetRandomSearchLocation();
+			   isInformed = false;
+			   isUsingSiteFidelity = false;
+		 }
+   
+		   isGivingUpSearch = false;
+		   CPFA_state = DEPARTING;   
+		   isHoldingFood = false; 
+		   travelingTime+=SimulationTick()-startTime;//qilu 10/22
+		   startTime = SimulationTick();//qilu 10/22
+				   
+	   } // end of In the nest
+	   // Take a small step towards the nest so we don't overshoot by too much if we miss it
+	   else 
+	   {
+		   if(IsAtTarget())
+		   {
+			   //argos::LOG<<"heading to true in returning"<<endl;
+			   //SetIsHeadingToNest(false); // Turn off error for this
+			   //SetTarget(LoopFunctions->NestPosition);
+			   //randomly search for the nest
+			   argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
+			   argos::Real rand = RNG->Gaussian(USCV);
+	   
+			   argos::CRadians rotation(rand);
+			   argos::CRadians angle1(rotation);
+			   argos::CRadians angle2(GetHeading());
+			   argos::CRadians turn_angle(angle1 + angle2);
+			   argos::CVector2 turn_vector(SearchStepSize, turn_angle);
+			   SetIsHeadingToNest(false);
+			   SetTarget(turn_vector + GetPosition());
+		   }
+		   //detect other robots in its camera view
+		   if(SimulationTick()% SimulationTicksPerSecond() ==0 ){
+				   
+			   
+		   }
+		   
+	   }		
+   }
 
 
 void CPFA_controller::SetRandomSearchLocation() {
@@ -924,36 +688,16 @@ void CPFA_controller::SetHoldingFood() {
  
 	         for(i = 0; i < LoopFunctions->FoodList.size(); i++) {
 	            if((GetPosition() - LoopFunctions->FoodList[i]).SquareLength() < FoodDistanceTolerance ) {
-					// if (dropCooldownMap.find(GetId()) != dropCooldownMap.end() &&
-					// 	(currentTime - dropCooldownMap[GetId()] < DROP_COOLDOWN)) {
-						
-					// 	argos::LOG << "Robot " << GetId() << " is still in cooldown and cannot pick up its own dropped resource at: " 
-					// 			<< LoopFunctions->FoodList[i] << " (Tick: " << currentTime << ")" << std::endl;
-						
-					// 	continue;  // Skip picking up its own recently dropped food
-					// }					
+				
 					// We found food! Calculate the nearby food density.
 					 isHoldingFood = true;
                      CPFA_state = SURVEYING;
-					 //CPFA_state = FOUND;
 					 j = i + 1;
 					 searchingTime+=SimulationTick()-startTime;
 					 startTime = SimulationTick();
 					//increment totalResourcesPickedUp from loop functions
 					LoopFunctions->totalResourcesPickedUp++;
 
-
-					// Check if this food was previously dropped
-					for (size_t k = 0; k < LoopFunctions->CongestionDropList.size(); k++) {
-						if ((LoopFunctions->FoodList[i] - LoopFunctions->CongestionDropList[k]).SquareLength() < FoodDistanceTolerance) {
-							// argos::LOG << "🚨 Robot " << GetId() << " picked up a previously dropped resource at: " 
-							// 		<< LoopFunctions->FoodList[i] << " at: " << SimulationTick() << std::endl;
-							LoopFunctions->totalResourcesPickedUp--;  // decrement the count since we dont count resources that were prevoiusly dropped as pickedup
-							// Remove the food from the dropped list
-							LoopFunctions->CongestionDropList.erase(LoopFunctions->CongestionDropList.begin() + k);
-							break;  // Stop checking after the first match
-						}
-					}
 				   //distribute a new food 
 			       /*  argos::CVector2 placementPosition;
 			         placementPosition.Set(RNG->Uniform(ForageRangeX), RNG->Uniform(ForageRangeY));
@@ -1270,8 +1014,6 @@ string CPFA_controller::GetStatus(){//qilu 10/22
     else if (CPFA_state ==SEARCHING)return "SEARCHING";
     else if (CPFA_state == RETURNING)return "RETURNING";
     else if (CPFA_state == SURVEYING) return "SURVEYING";
-	else if (CPFA_state == FOLLOWING_ENTRY_PATH) return "FOLLOWING_ENTRY_PATH";
-	else if (CPFA_state == FOLLOWING_EXIT_PATH) return "FOLLOWING_EXIT_PATH";
     //else if (MPFA_state == INACTIVE) return "INACTIVE";
     else return "SHUTDOWN";
     

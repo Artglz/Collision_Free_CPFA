@@ -20,8 +20,9 @@ target_link_libraries(CPFA_controller
                       BaseController
                       Pheromone
                       Nest
-                      jsoncpp_lib)  # Added jsoncpp_lib here
+                      jsoncpp_lib)
 
+# Link Python library manually
 target_link_libraries(CPFA_loop_functions
                       CPFA_controller
                       argos3core_simulator
@@ -30,8 +31,9 @@ target_link_libraries(CPFA_loop_functions
                       argos3plugin_simulator_genericrobot
                       argos3plugin_simulator_qtopengl
                       ${ARGOS_QTOPENGL_LIBRARIES}
-                      ${PYTHON_LIBRARIES}
-                      jsoncpp_lib)  # Added jsoncpp_lib here if needed
+                      ${Python3_LIBRARIES}
+                      jsoncpp_lib)
 
+# ${Python3_LIBRARY}
 # Find JSONCPP
 find_package(jsoncpp REQUIRED)

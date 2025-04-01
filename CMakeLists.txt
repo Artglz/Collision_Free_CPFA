@@ -33,9 +33,27 @@ link_directories(${ARGOS_LIBRARY_DIR})
 link_libraries(${ARGOS_LDFLAGS})
 
 
-# find python package
-#find_package(PythonLibs REQUIRED)
-#include_directories(${PYTHON_INCLUDE_DIRS})
+# Find Python
+#find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+#include_directories(${Python3_INCLUDE_DIRS})
+
+# Explicitly set the Python library path
+#set(Python3_LIBRARY "/opt/homebrew/Cellar/python@3.10/3.10.16/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib")
+
+# Ensure the linker finds it
+#link_directories("/opt/homebrew/Cellar/python@3.10/3.10.16/Frameworks/Python.framework/Versions/3.10/lib")
+
+# Find Python
+find_package(Python3 3.10 EXACT COMPONENTS Interpreter Development REQUIRED)
+
+# Set manually installed Python paths
+set(Python3_EXECUTABLE "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10")
+set(Python3_INCLUDE_DIR "/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10")
+set(Python3_LIBRARY "/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib")
+
+# Include directories and link paths
+include_directories(${Python3_INCLUDE_DIR})
+link_directories(${Python3_LIBRARY})
 
 # Check for required libraries to compile code depending on Qt and OpenGL.
 # include(ARGoSCheckQTOpenGL)
