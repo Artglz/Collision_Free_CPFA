@@ -54,6 +54,8 @@ class BaseController : public argos::CCI_Controller {
 		float DestinationNoiseStdev; // for introducing error in destination positions
 		float PositionNoiseStdev; // for introducing error in current position
 
+		void SetLeftTurn(argos::Real newTargetAngle);
+
 		size_t WaitTime;
         size_t collisionDelay;
         bool collisionFlag;
@@ -109,7 +111,7 @@ class BaseController : public argos::CCI_Controller {
 		void SetNextMovement();
 		void SetTargetAngleDistance(argos::Real newAngleToTurnInDegrees);
 		void SetTargetTravelDistance(argos::Real newTargetDistance);
-		void SetLeftTurn(argos::Real newTargetAngle);
+		// void SetLeftTurn(argos::Real newTargetAngle);
 		void SetRightTurn(argos::Real newTargetAngle);
 		void SetMoveForward(argos::Real newTargetDistance);
 		void SetMoveBack(argos::Real newTargetDistance);

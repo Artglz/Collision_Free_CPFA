@@ -104,6 +104,7 @@ class CPFA_controller : public BaseController {
 			SEARCHING = 1,
 			RETURNING = 2,
 			SURVEYING = 3,
+			CONGESTED = 4
 		} CPFA_state;
 
 		/* iAnt CPFA state functions */
@@ -112,6 +113,7 @@ class CPFA_controller : public BaseController {
 		void Searching();
 		void Returning();
 		void Surveying();
+		void Congested();
 
 		/* CPFA helper functions */
 		void SetRandomSearchLocation();
@@ -133,6 +135,12 @@ class CPFA_controller : public BaseController {
 		const size_t STEP_SIZE = 50;	
 		std::vector<argos::CVector2> returning_trajectory;	
 		bool IsInCongestion();
+		bool moving_to_target = false;
+		bool congested;
+		int counter = 0;
+		std::vector<float> distances;
+		bool departed_from_resources = false;
+		bool turning_left = false;
 
 		CVector2 previous_position;
 

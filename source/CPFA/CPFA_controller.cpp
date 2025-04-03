@@ -190,6 +190,9 @@ void CPFA_controller::CPFA() {
 			//SetIsHeadingToNest(false);
 			Surveying();
 			break;
+		case CONGESTED:
+			Congested();
+			break;
 	}
 }
 
@@ -291,64 +294,6 @@ void CPFA_controller::Departing()
     argos::Real distanceToTarget = (GetPosition() - GetTarget()).Length();
     argos::Real randomNumber = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
 
-	// if(IsInTheNest()){
-	// 	if(SimulationTick() > 1500){
-	// 		// check for nearby dropped resources before moving randomly
-	// 		argos::CVector2 closestDroppedFood;
-	// 		bool foundDroppedFood = false;
-	// 		argos::Real minDistance = std::numeric_limits<argos::Real>::max();
-	// 		int currentTime = SimulationTick();  // Get current simulation time
-
-	// 		for (size_t i = 0; i < LoopFunctions->CongestionDropList.size(); i++) {
-	// 			argos::Real dist = (GetPosition() - LoopFunctions->CongestionDropList[i]).Length();
-
-	// 			//we skip if too many robots are already targeting this resource
-	// 			if (foodTargetCount[LoopFunctions->CongestionDropList[i]] >= MAX_ROBOTS_PER_RESOURCE) {
-	// 				//argos::LOG << "Robot " << GetId() << " skipping resource at " << LoopFunctions->CongestionDropList[i] << " since it is already targeted "<< std::endl;
-	// 				continue;
-	// 			}
-
-	// 			// Check if this robot recently dropped food (cooldown active)
-	// 			if (dropCooldownMap.find(GetId()) != dropCooldownMap.end() && 
-	// 				(currentTime - dropCooldownMap[GetId()] < DROP_COOLDOWN)) {
-	// 				continue; // Skip its own dropped resource
-	// 			}
-
-	// 			if (dist < minDistance) {
-	// 				minDistance = dist;
-	// 				closestDroppedFood = LoopFunctions->CongestionDropList[i];
-	// 				foundDroppedFood = true;
-	// 			}
-	// 		}
-
-	// 		if (foundDroppedFood && minDistance < 2) {  // Threshold distance to prioritize nearby resources
-	// 		    // Mark this resource as being targeted by another robot
-    // 			//foodTargetCount[closestDroppedFood]++;
-
-	// 			//delete closestDroppedFood from the list
-	// 			LoopFunctions->CongestionDropList.erase(std::remove(LoopFunctions->CongestionDropList.begin(), LoopFunctions->CongestionDropList.end(), closestDroppedFood), LoopFunctions->CongestionDropList.end());
-	// 			SetTarget(closestDroppedFood);
-	// 			CPFA_state = SEARCHING;  // Immediately switch to searching
-	// 			argos::LOG << "🚨 Robot " << GetId() << " prioritizing dropped resource at " << closestDroppedFood << " at: " << currentTime << std::endl;
-	// 			return; // Prevent further execution of Departing logic
-	// 		}
-	// 	}
-	// }
-    /*
-    ofstream log_output_stream;
-    log_output_stream.open("cpfa_log.txt", ios::app);
-    log_output_stream << "Distance to target: " << distanceToTarget << endl;
-    log_output_stream << "Current Position: " << GetPosition() << ", Target: " << GetTarget() << endl;
-    log_output_stream.close();
-    */
-   	// if (IsInTheNest() && SimulationTick() % SimulationTicksPerSecond() == 0) {
-	// 	if (!LoopFunctions->CongestionDropList.empty()) {
-	// 		// Force robots to first check the congestion list before departing
-	// 		SetTarget(LoopFunctions->CongestionDropList[0]); 
-	// 		CPFA_state = SEARCHING;
-	// 		return;
-	// 	}
-	// }
 	/* When not informed, continue to travel until randomly switching to the searching state. */
     if((SimulationTick() % (SimulationTicksPerSecond() / 2)) == 0) {
        if(isInformed == false){
@@ -423,9 +368,8 @@ void CPFA_controller::Searching() {
              isGivingUpSearch = true;
 	         LoopFunctions->FidelityList.erase(controllerID);
              isUsingSiteFidelity = false; 
-             updateFidelity = false; 
+             updateFidelity = false;
 			 CPFA_state = RETURNING;
-             //CPFA_state = GAVE_UP;
              searchingTime+=SimulationTick()-startTime;
              startTime = SimulationTick();
 
@@ -555,19 +499,40 @@ void CPFA_controller::Surveying() {
 	}
 }
 
-void CPFA_controller::Returning() {
-    // Set velocity while returning to the nest
-	if (IsHoldingFood()) {
-		m_pcWheels->SetLinearVelocity(0.1f, 0.1f);  // Slightly higher speed for carrying robots
-	} else {
-		m_pcWheels->SetLinearVelocity(0.8f, 0.8f); // Slower speed for empty robots
-	}
+void CPFA_controller::Congested(){
 	
+	// make robot turn left and also head to new target
+	if (!moving_to_target) {
+		argos::CVector2 current_position = GetPosition(); // Get the robot's current position
+		argos::CRadians heading = GetHeading();          // Get the robot's current heading
+		heading += argos::CRadians(ARGOS_PI / 4);        // Add 45 degrees (π/4 radians) to the heading
+		argos::CVector2 straight_ahead(0.3, heading);    // Create a vector x units in the adjusted direction
+		SetTarget(current_position + straight_ahead);    // Set the target based on the corrected heading
+		moving_to_target = true;
+		// argos::LOG << "Robot " << GetId() << " set target 0.3 unit left : " << GetTarget() 
+		// 			<< " with current position: " << GetPosition() << std::endl;
+		SetLeftTurn(45);
+		return;
+	}
+
+	// once it finishes moving to target it can attempt to head to nest again
+	if (IsAtTarget()) {
+		SetTarget(LoopFunctions->NestPosition);
+		CPFA_state = RETURNING;
+		moving_to_target = false;
+		//argos::LOG << "Robot " << GetId() << " is heading back to the nest." << std::endl;
+	}
+}
+
+void CPFA_controller::Returning() {
 
     // Check if the robot is either in the nest or in a congested area
     if (IsInTheNest()) {
 		returning_trajectory.clear();
+		counter = 0;
+		departed_from_resources = false;
         // Handle normal nest drop logic
+		argos::LOG << "Reach Nest" << std::endl;
         if (isHoldingFood) {
             num_targets_collected++; // Increment collected resource count
             LoopFunctions->currNumCollectedFood++; // Update current collected food count
@@ -606,115 +571,92 @@ void CPFA_controller::Returning() {
 
         // Update robot state
         isGivingUpSearch = false;
-        // CPFA_state = DROPPED;
 		CPFA_state = DEPARTING;
         isHoldingFood = false;
         travelingTime += SimulationTick() - startTime;
         startTime = SimulationTick();
     }
-    else if (IsInCongestion()) {
-       // Handle congestion-specific drop logic
-	   returning_trajectory.clear();
-        if (isHoldingFood) {
-            // Drop the resource at the current position
-            argos::CVector2 dropPosition = GetPosition(); // Get the robot's current position
-            LoopFunctions->CongestionDropList.push_back(dropPosition); // Add drop position to congestion list
-			//call function predict congestion from loop function
-			// LoopFunctions->PredictCongestion();
-			
-			// Storing the time this robot dropped a resource
-			dropCooldownMap[GetId()] = SimulationTick();
-			// Ensure dropped food is available for collection again
-			LoopFunctions->FoodList.push_back(dropPosition);
-			LoopFunctions->FoodColoringList.push_back(argos::CColor::RED); // Set food color if needed
-            // Log the drop due to congestion
-            // argos::LOG << "Robot " << GetId() << " dropped a resource due to congestion at: " << dropPosition << " " << SimulationTick() << std::endl;
-			// argos::LOG << "Congested with resource at: " <<  SimulationTick() << std::endl;
-			if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
-				SetIsHeadingToNest(false);
-				SetTarget(SiteFidelityPosition); // Use site fidelity
-				isInformed = true;
-				// argos::LOG << "Robot " << GetId() << " is using site fidelity after dropping a resource due to congestion at: " 
-				// 		<< dropPosition << " at: " << SimulationTick() << std::endl;
-			}
-			else {
-				SetRandomSearchLocation(); // Perform a random search
-				isInformed = false;
-				isUsingSiteFidelity = false;
-				// argos::LOG << "Robot " << GetId() << " is resuming search after dropping a resource due to congestion at: " 
-				// 		<< dropPosition << " at: " << SimulationTick() << std::endl;
-			}
-
-			isGivingUpSearch = false;
-			CPFA_state = DEPARTING;
-			isHoldingFood = false;
-			isCongested = false; // fixes problem where robot gets detected as congestion even thought it is not
-			travelingTime += SimulationTick() - startTime;
-			// startTime = SimulationTick();
-
-        } else{
-			// If the robot is in congestion but has no food, resume searching and stop going to nest
-			//argos::LOG << "Robot " << GetId() << " is in congestion but has no food! Resuming search." << std::endl;
-			// argos::LOG << "Congested with no resource at: " <<  SimulationTick() << std::endl;
-			CPFA_state = SEARCHING;
-			isCongested = false;
-			SetRandomSearchLocation();
-		}
-    }
     else {
-        // If not in the nest or congestion, proceed towards the target
+		// we create a window of 25/50 timesteps, it can be sliding, where it subtracts from the first index and last index
+		// so we get the distance traveled, then analyze stats
+		returning_trajectory.push_back(GetPosition());
+		if (returning_trajectory.size() >= 100) {
+			// get first index and subtract from last index
+			argos::CVector2 start = returning_trajectory[counter];
+			argos::CVector2 end = returning_trajectory[returning_trajectory.size() - 1];
+			argos::Real distance = (end - start).Length();
+			// argos::LOG << GetId() << " - " << distance << std::endl;
+			//distances.push_back(distance);
+
+			if (distance < 0.025 && departed_from_resources) {
+				// instead of doing this I could set a bool statement if it has reached the .20 distance before and then activate this statement since I know it has already been able to travel thay distance before
+				// also this solution doesnt work if robot is trying to avoid collisions so it wont be facing the nest
+                // argos::CVector2 to_nest = LoopFunctions->NestPosition - GetPosition();
+                // argos::CRadians angle_to_nest = argos::ATan2(to_nest.GetY(), to_nest.GetX());
+                // argos::CRadians heading = GetHeading();
+
+                // If the heading is not aligned, do not consider it congested
+				// if (std::abs((heading - angle_to_nest).SignedNormalize().GetValue()) < argos::ToRadians(argos::CDegrees(5.0)).GetValue()) {                    
+				returning_trajectory.clear();
+				CPFA_state = CONGESTED;
+				counter = 0;
+				departed_from_resources = false;
+				turning_left = true;
+				argos::LOG << "Robot " << GetId() << " is congested with distance " << distance << std::endl;
+                // }
+            }
+			if(distance > .48){
+				departed_from_resources = true
+			}
+			counter++;
+		}
+
+
+
+        // If not in the nest, proceed towards the target
 
 		// check if returning_trajectory is empty
-		if (returning_trajectory.empty()) {
-			// Handle the case where the trajectory is empty
-			// argos::LOG << "Returning trajectory is empty for robot " << GetId() << std::endl;
-			previous_ratio_distance_lag_1 = -1;
-			previous_ratio_distance = -1;
-			previous_angle_lag_1 = -1;
-			previous_angle = -1;
-		}
-		//Start logging the trajectory for congestion prediction
-		returning_trajectory.push_back(GetPosition());
-		if(returning_trajectory.size() >= WINDOW_SIZE && (returning_trajectory.size() - WINDOW_SIZE) % STEP_SIZE == 0){
-			//call predict congestion function
-			size_t start_index = returning_trajectory.size() - 150;
-			size_t end_index = returning_trajectory.size();		
-			size_t middle_index = (start_index + end_index) / 2;
-			std::vector<argos::CVector2> trajectory_segment(returning_trajectory.begin() + start_index, returning_trajectory.begin() + end_index);
+		// if (returning_trajectory.empty()) {
+		// 	// Handle the case where the trajectory is empty
+		// 	// argos::LOG << "Returning trajectory is empty for robot " << GetId() << std::endl;
+		// 	previous_ratio_distance_lag_1 = -1;
+		// 	previous_ratio_distance = -1;
+		// }
+		// //Start logging the trajectory for congestion prediction
+		// returning_trajectory.push_back(GetPosition());
+		// if(returning_trajectory.size() >= WINDOW_SIZE && (returning_trajectory.size() - WINDOW_SIZE) % STEP_SIZE == 0){
+		// 	//call predict congestion function
+		// 	size_t start_index = returning_trajectory.size() - 150;
+		// 	size_t end_index = returning_trajectory.size();		
+		// 	size_t middle_index = (start_index + end_index) / 2;
+		// 	std::vector<argos::CVector2> trajectory_segment(returning_trajectory.begin() + start_index, returning_trajectory.begin() + end_index);
 
-			// Calculate start-to-end distance
-			double start_to_end_distance = LoopFunctions->euclideanDistance(
-				returning_trajectory[start_index].GetX(), returning_trajectory[start_index].GetY(),
-				returning_trajectory[end_index].GetX(), returning_trajectory[end_index].GetY()
-			);
+		// 	// Calculate start-to-end distance
+		// 	double start_to_end_distance = LoopFunctions->euclideanDistance(
+		// 		returning_trajectory[start_index].GetX(), returning_trajectory[start_index].GetY(),
+		// 		returning_trajectory[end_index].GetX(), returning_trajectory[end_index].GetY()
+		// 	);
 
-			int indexes = start_index + end_index;
+		// 	if(previous_ratio_distance_lag_1 != -1) {
+		// 		// argos::LOG << "Robot " << GetId() << " is predicting congestion. " << start_index << " : " << end_index << std::endl;
 
-			if(previous_ratio_distance_lag_1 != -1 && previous_angle_lag_1 != -1) {
-				// argos::LOG << "Robot " << GetId() << " is predicting congestion. " << start_index << " : " << end_index << std::endl;
+		// 		congested = LoopFunctions->predictCongestion(trajectory_segment, 
+		// 			previous_ratio_distance, previous_ratio_distance_lag_1);
 
-				bool drop = LoopFunctions->predictCongestion(indexes, trajectory_segment, 
-					previous_ratio_distance, previous_ratio_distance_lag_1, 
-					previous_angle, previous_angle_lag_1);
-				if(drop && (GetPosition() - LoopFunctions->NestPosition).Length() < 1.0){
-					SetCongestion(drop);
-					//reset all variables
-					argos::LOG << "Robot " << GetId() << " dropped a resource. " << start_index << "-" << end_index << " at " << GetPosition() << std::endl;
-					previous_ratio_distance_lag_1 = -1;
-					previous_ratio_distance = -1;
-					previous_angle_lag_1 = -1;
-					previous_angle = -1;
-					returning_trajectory.clear();
-				}
+		// 		if(congested && (GetPosition() - LoopFunctions->NestPosition).Length() < 1.0){
+		// 			congested = false;
+		// 			CPFA_state = CONGESTED;
+		// 			//argos::LOG << "Robot " << GetId() << " is congested and has changed state at " << GetPosition() << std::endl;
+		// 			previous_ratio_distance_lag_1 = -1;
+		// 			previous_ratio_distance = -1;
+		// 			returning_trajectory.clear();
+		// 		}
 				
-			}
+		// 	}
 
-			previous_ratio_distance_lag_1 = previous_ratio_distance; // -1 , 20
-			previous_ratio_distance = start_to_end_distance / optimal_distance; // 20 , 22
-
-			previous_angle_lag_1 = previous_angle;
-			previous_angle = LoopFunctions->calculateAngle(returning_trajectory[start_index], returning_trajectory[middle_index], returning_trajectory[end_index]);		
-		 }
+		// 	previous_ratio_distance_lag_1 = previous_ratio_distance; // -1 , 20
+		// 	previous_ratio_distance = start_to_end_distance / optimal_distance; // 20 , 22	
+		//  }
         if (IsAtTarget()) {
             // Perform random search adjustment if the target is reached
             argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
