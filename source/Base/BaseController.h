@@ -37,6 +37,12 @@ class BaseController : public argos::CCI_Controller {
 		bool Wait();
 		void Wait(size_t wait_time_in_seconds);
 
+		virtual bool CollisionDetection();
+		void SetLeftTurn(argos::Real newTargetAngle);
+		void SetRightTurn(argos::Real newTargetAngle);
+		void PushMovement(size_t moveType, argos::Real moveSize);
+		argos::CVector2 GetCollisionVector();
+
 		/*  time calculation functions */
 		size_t SimulationTick();
 		size_t SimulationTicksPerSecond();
@@ -53,8 +59,6 @@ class BaseController : public argos::CCI_Controller {
 		unsigned int collision_counter;
 		float DestinationNoiseStdev; // for introducing error in destination positions
 		float PositionNoiseStdev; // for introducing error in current position
-
-		void SetLeftTurn(argos::Real newTargetAngle);
 
 		size_t WaitTime;
         size_t collisionDelay;
@@ -112,15 +116,14 @@ class BaseController : public argos::CCI_Controller {
 		void SetTargetAngleDistance(argos::Real newAngleToTurnInDegrees);
 		void SetTargetTravelDistance(argos::Real newTargetDistance);
 		// void SetLeftTurn(argos::Real newTargetAngle);
-		void SetRightTurn(argos::Real newTargetAngle);
+		// void SetRightTurn(argos::Real newTargetAngle);
 		void SetMoveForward(argos::Real newTargetDistance);
 		void SetMoveBack(argos::Real newTargetDistance);
-		void PushMovement(size_t moveType, argos::Real moveSize);
+		// void PushMovement(size_t moveType, argos::Real moveSize);
 		void PopMovement();
 
 		/* collision detection functions */
-		bool CollisionDetection();
-		argos::CVector2 GetCollisionVector();
+		// bool CollisionDetection();
 
 		bool heading_to_nest;
 

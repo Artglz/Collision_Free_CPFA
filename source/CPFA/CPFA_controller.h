@@ -9,7 +9,7 @@
 #include <argos3/plugins/robots/foot-bot/simulator/footbot_entity.h>
 #include <argos3/core/simulator/entity/floor_entity.h>
 //#include <cmath>
-
+#include <numeric>
 
 using namespace std;
 using namespace argos;
@@ -131,7 +131,7 @@ class CPFA_controller : public BaseController {
 
 		void UpdateTargetRayList();
 
-		const size_t WINDOW_SIZE = 150;
+		const size_t WINDOW_SIZE = 10;
 		const size_t STEP_SIZE = 50;	
 		std::vector<argos::CVector2> returning_trajectory;	
 		bool IsInCongestion();
@@ -141,6 +141,14 @@ class CPFA_controller : public BaseController {
 		std::vector<float> distances;
 		bool departed_from_resources = false;
 		bool turning_left = false;
+		bool CollisionDetection() override;
+		std::vector<float> recent_distances;
+
+		float distance_traveled = 0.0;
+		argos::CVector2 d;
+		float tortuosity;
+		CVector2 previous_location;
+		float ema_distance = -1.0f;
 
 		CVector2 previous_position;
 

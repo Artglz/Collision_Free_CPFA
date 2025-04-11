@@ -33,6 +33,7 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 
 		CPFA_loop_functions();
 	   	int totalResourcesPickedUp = 0;
+		int totalCongested = 0;
 		void Init(argos::TConfigurationNode &t_tree);
 		void Reset();
 		void PreStep();

@@ -404,7 +404,7 @@ void CPFA_loop_functions::PostExperiment() {
     
         //dataOutput <<data.CollisionTime/16.0<<", "<< time_in_minutes << ", " << data.RandomSeed << endl;
         //dataOutput << Score() << ", "<<(CollisionTime-16*Score())/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
-        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", " << totalResourcesPickedUp << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", " << totalResourcesPickedUp << ", "<< curr_time_in_minutes <<", "<<RandomSeed<< ", " << totalCongested<<endl;
         dataOutput.close();
 
 		/*

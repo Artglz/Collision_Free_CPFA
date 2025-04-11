@@ -196,6 +196,51 @@ void CPFA_controller::CPFA() {
 	}
 }
 
+bool CPFA_controller::CollisionDetection() {
+	//log current CPFA State
+	argos::CVector2 collisionVector = GetCollisionVector();
+	argos::Real collisionAngle = ToDegrees(collisionVector.Angle()).GetValue();
+	bool isCollisionDetected = false;
+	if(GoStraightAngleRangeInDegrees.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+		 && collisionVector.Length() > 0.0) {
+
+		// if a robot is following a path, we dont want to avoid collisions since paths dont overlap. So there will be no
+		// collisions as longs other robots don't interfere.
+
+		isCollisionDetected = true;
+		collision_counter++;
+		if (turning_left) {
+            return isCollisionDetected;
+        } 
+		Stop();
+
+
+		// if (turning_left) {
+        //     argos::Real randomDelay = RNG->Uniform(argos::CRange<argos::Real>(0.5, 1.5)); // Random delay between 0.5 and 1.5 seconds
+        //     collisionDelay = SimulationTick() + (size_t)(randomDelay * SimulationTicksPerSecond());
+        //     return isCollisionDetected;
+        // }   
+
+		while(MovementStack.size() > 0) MovementStack.pop();
+
+		PushMovement(FORWARD, SearchStepSize);
+
+		Real randomNumber = RNG->Uniform(CRange<Real>(0.5, 1.0));
+        collisionDelay = SimulationTick() + (size_t)(randomNumber*SimulationTicksPerSecond());//qilu 10/26/2016	
+
+		if(collisionAngle <= 0.0)  {
+			//argos::LOG << collisionAngle << std::endl << collisionVector << std::endl << std::endl;
+			SetLeftTurn(collisionAngle); //qilu 09/24/2016
+		} else {
+			//argos::LOG << collisionAngle << std::endl << collisionVector << std::endl << std::endl;
+			SetRightTurn(collisionAngle); //qilu 09/24/2016
+		}
+
+	}
+
+	return isCollisionDetected;
+}
+
 bool CPFA_controller::IsInTheNest() {
     
 	return ((GetPosition() - LoopFunctions->NestPosition).SquareLength()
@@ -501,36 +546,12 @@ void CPFA_controller::Surveying() {
 
 void CPFA_controller::Congested(){
 	
-	// make robot turn left and also head to new target
-	if (!moving_to_target) {
-		argos::CVector2 current_position = GetPosition(); // Get the robot's current position
-		argos::CRadians heading = GetHeading();          // Get the robot's current heading
-		heading += argos::CRadians(ARGOS_PI / 4);        // Add 45 degrees (π/4 radians) to the heading
-		argos::CVector2 straight_ahead(0.3, heading);    // Create a vector x units in the adjusted direction
-		SetTarget(current_position + straight_ahead);    // Set the target based on the corrected heading
-		moving_to_target = true;
-		// argos::LOG << "Robot " << GetId() << " set target 0.3 unit left : " << GetTarget() 
-		// 			<< " with current position: " << GetPosition() << std::endl;
-		SetLeftTurn(45);
-		return;
-	}
-
-	// once it finishes moving to target it can attempt to head to nest again
-	if (IsAtTarget()) {
-		SetTarget(LoopFunctions->NestPosition);
-		CPFA_state = RETURNING;
-		moving_to_target = false;
-		//argos::LOG << "Robot " << GetId() << " is heading back to the nest." << std::endl;
-	}
-}
-
-void CPFA_controller::Returning() {
-
-    // Check if the robot is either in the nest or in a congested area
+	// just in case robot stumbles on nest, while turning left
     if (IsInTheNest()) {
 		returning_trajectory.clear();
 		counter = 0;
 		departed_from_resources = false;
+		turning_left = false;
         // Handle normal nest drop logic
 		argos::LOG << "Reach Nest" << std::endl;
         if (isHoldingFood) {
@@ -575,88 +596,264 @@ void CPFA_controller::Returning() {
         isHoldingFood = false;
         travelingTime += SimulationTick() - startTime;
         startTime = SimulationTick();
+    }	
+	// make robot turn left and also head to new target
+	if (!moving_to_target) {
+		argos::CVector2 current_position = GetPosition(); // Get the robot's current position
+		argos::CRadians heading = GetHeading();          // Get the robot's current heading
+		heading += argos::CRadians(ARGOS_PI / 2);        // Add 45 degrees (π/4 radians) to the heading
+		argos::CVector2 straight_ahead(0.3, heading);    // Create a vector x units in the adjusted direction
+		SetTarget(current_position + straight_ahead);    // Set the target based on the corrected heading
+		moving_to_target = true;
+
+		m_pcLEDs->SetAllColors(CColor::RED);
+
+		// argos::LOG << "Robot " << GetId() << " set target 0.3 unit left : " << GetTarget() 
+		// 			<< " with current position: " << GetPosition() << std::endl;
+		SetLeftTurn(90);
+		return;
+	}
+
+	// once it finishes moving to target it can attempt to head to nest again
+	if (IsAtTarget()) {
+		SetTarget(LoopFunctions->NestPosition);
+		CPFA_state = RETURNING;
+		moving_to_target = false;
+		turning_left = false;
+		m_pcLEDs->SetAllColors(CColor::BLACK);
+
+		//argos::LOG << "Robot " << GetId() << " is heading back to the nest." << std::endl;
+	}
+}
+
+void CPFA_controller::Returning() {
+
+    // Check if the robot is either in the nest or in a congested area
+    if (IsInTheNest()) {
+		returning_trajectory.clear();
+		counter = 0;
+		departed_from_resources = false;
+		turning_left = false;
+        // Handle normal nest drop logic
+		argos::LOG << "Reach Nest" << std::endl;
+        if (isHoldingFood) {
+            num_targets_collected++; // Increment collected resource count
+            LoopFunctions->currNumCollectedFood++; // Update current collected food count
+            LoopFunctions->setScore(num_targets_collected); // Update the score
+			//argos::LOG << "Resource collected by robot " << GetId() << " at tick " << SimulationTick() << std::endl;
+            // Determine if pheromone should be placed
+            argos::Real poissonCDF_pLayRate = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfLayingPheromone);
+            argos::Real r1 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
+            if (poissonCDF_pLayRate > r1 && updateFidelity) {
+                TrailToShare.push_back(LoopFunctions->NestPosition); // Add nest position to trail
+                argos::Real timeInSeconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond());
+                Pheromone sharedPheromone(SiteFidelityPosition, TrailToShare, timeInSeconds, LoopFunctions->RateOfPheromoneDecay, ResourceDensity);
+                LoopFunctions->PheromoneList.push_back(sharedPheromone); // Add pheromone to the list
+                sharedPheromone.Deactivate(); // Ensure it won't get re-added later
+            }
+            TrailToShare.clear();
+        }
+
+        // Decide next task: Site fidelity, pheromones, or random search
+        if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
+            SetIsHeadingToNest(false);
+            SetTarget(SiteFidelityPosition); // Use site fidelity
+            isInformed = true;
+        }
+        else if (SetTargetPheromone()) {
+            isInformed = true;
+            isUsingSiteFidelity = false; // Follow pheromone waypoints
+        }
+        else {
+            SetRandomSearchLocation(); // Perform a random search
+            isInformed = false;
+            isUsingSiteFidelity = false;
+        }
+
+        // Update robot state
+        isGivingUpSearch = false;
+		CPFA_state = DEPARTING;
+        isHoldingFood = false;
+        travelingTime += SimulationTick() - startTime;
+        startTime = SimulationTick();
     }
     else {
-		// we create a window of 25/50 timesteps, it can be sliding, where it subtracts from the first index and last index
+		// we create a window of 100 timesteps, it can be sliding, where it subtracts from the first index and last index
 		// so we get the distance traveled, then analyze stats
 		returning_trajectory.push_back(GetPosition());
-		if (returning_trajectory.size() >= 100) {
-			// get first index and subtract from last index
-			argos::CVector2 start = returning_trajectory[counter];
-			argos::CVector2 end = returning_trajectory[returning_trajectory.size() - 1];
-			argos::Real distance = (end - start).Length();
-			// argos::LOG << GetId() << " - " << distance << std::endl;
-			//distances.push_back(distance);
-
-			if (distance < 0.025 && departed_from_resources) {
-				// instead of doing this I could set a bool statement if it has reached the .20 distance before and then activate this statement since I know it has already been able to travel thay distance before
-				// also this solution doesnt work if robot is trying to avoid collisions so it wont be facing the nest
-                // argos::CVector2 to_nest = LoopFunctions->NestPosition - GetPosition();
-                // argos::CRadians angle_to_nest = argos::ATan2(to_nest.GetY(), to_nest.GetX());
-                // argos::CRadians heading = GetHeading();
-
-                // If the heading is not aligned, do not consider it congested
-				// if (std::abs((heading - angle_to_nest).SignedNormalize().GetValue()) < argos::ToRadians(argos::CDegrees(5.0)).GetValue()) {                    
-				returning_trajectory.clear();
-				CPFA_state = CONGESTED;
-				counter = 0;
-				departed_from_resources = false;
-				turning_left = true;
-				argos::LOG << "Robot " << GetId() << " is congested with distance " << distance << std::endl;
-                // }
-            }
-			if(distance > .48){
-				departed_from_resources = true
-			}
-			counter++;
+		
+		// /*------------
+		// Moving Average (Mean) of Past Distances
+		// -------------*/
+		if (returning_trajectory.size() > 100) {
+			returning_trajectory.erase(returning_trajectory.begin()); // slide the window
 		}
-
-
-
-        // If not in the nest, proceed towards the target
-
-		// check if returning_trajectory is empty
-		// if (returning_trajectory.empty()) {
-		// 	// Handle the case where the trajectory is empty
-		// 	// argos::LOG << "Returning trajectory is empty for robot " << GetId() << std::endl;
-		// 	previous_ratio_distance_lag_1 = -1;
-		// 	previous_ratio_distance = -1;
-		// }
-		// //Start logging the trajectory for congestion prediction
-		// returning_trajectory.push_back(GetPosition());
-		// if(returning_trajectory.size() >= WINDOW_SIZE && (returning_trajectory.size() - WINDOW_SIZE) % STEP_SIZE == 0){
-		// 	//call predict congestion function
-		// 	size_t start_index = returning_trajectory.size() - 150;
-		// 	size_t end_index = returning_trajectory.size();		
-		// 	size_t middle_index = (start_index + end_index) / 2;
-		// 	std::vector<argos::CVector2> trajectory_segment(returning_trajectory.begin() + start_index, returning_trajectory.begin() + end_index);
-
-		// 	// Calculate start-to-end distance
-		// 	double start_to_end_distance = LoopFunctions->euclideanDistance(
-		// 		returning_trajectory[start_index].GetX(), returning_trajectory[start_index].GetY(),
-		// 		returning_trajectory[end_index].GetX(), returning_trajectory[end_index].GetY()
-		// 	);
-
-		// 	if(previous_ratio_distance_lag_1 != -1) {
-		// 		// argos::LOG << "Robot " << GetId() << " is predicting congestion. " << start_index << " : " << end_index << std::endl;
-
-		// 		congested = LoopFunctions->predictCongestion(trajectory_segment, 
-		// 			previous_ratio_distance, previous_ratio_distance_lag_1);
-
-		// 		if(congested && (GetPosition() - LoopFunctions->NestPosition).Length() < 1.0){
-		// 			congested = false;
-		// 			CPFA_state = CONGESTED;
-		// 			//argos::LOG << "Robot " << GetId() << " is congested and has changed state at " << GetPosition() << std::endl;
-		// 			previous_ratio_distance_lag_1 = -1;
-		// 			previous_ratio_distance = -1;
-		// 			returning_trajectory.clear();
-		// 		}
-				
+		
+		// if (returning_trajectory.size() == 100) {
+		// 	argos::CVector2 start = returning_trajectory.front();
+		// 	argos::CVector2 end = returning_trajectory.back();
+		// 	argos::Real distance = (end - start).Length();
+		// 	//argos::LOG << "Distance: " << distance << std::endl;
+		// 	// Store distances for adaptive thresholding
+		// 	recent_distances.push_back(distance);
+		// 	if (recent_distances.size() > 10) {
+		// 		recent_distances.erase(recent_distances.begin());
 		// 	}
+		
+		// 	if (recent_distances.size() == 10) {
+		// 		float mean_distance = std::accumulate(recent_distances.begin(), recent_distances.end(), 0.0f) / recent_distances.size();
+		// 		float threshold = 0.50;
+		// 		// This would trigger congestion detection when the robot’s movement drops to 50% of the expected distance. threshold = 2.0
+		// 		// something like 10% would be much less strict. threshold = 0.2
+		// 		// something like 90% would be much more strict. threshold = 1.8		
+		// 		if (distance < mean_distance * threshold && GetPosition().Length() < 3.0) {
+		// 			for (auto d : recent_distances) {
+		// 				argos::LOG << d << ", ";
+		// 			}
+		// 			CPFA_state = CONGESTED;
+		// 			turning_left = true;
+		// 			returning_trajectory.clear();
+		// 			recent_distances.clear();
+		// 		}
+		// 	}
+		// }
+		if (returning_trajectory.size() == 100) {
+			argos::CVector2 start = returning_trajectory.front();
+			argos::CVector2 end = returning_trajectory.back();
+			float euclidean_distance = (end - start).Length();
+		
+			// Initialize EMA if first time
+			if (ema_distance < 0.0f) {
+				ema_distance = euclidean_distance;
+			}
+		
+			// Update EMA using smoothing factor (alpha)
+			float alpha = 0.2f;
+			ema_distance = alpha * euclidean_distance + (1.0f - alpha) * ema_distance;
+		
+			// Congestion detection: if distance is significantly less than EMA
+			if (euclidean_distance < ema_distance * 0.75f && GetPosition().Length() < 3.0f) {
+				argos::LOG << "[Robot " << GetId() << "] CONGESTION DETECTED — "
+						   << "Distance: " << euclidean_distance
+						   << ", EMA: " << ema_distance << std::endl;
+		
+				CPFA_state = CONGESTED;
+				turning_left = true;
+				LoopFunctions->totalCongested++;
+				// Reset state for next detection cycle
+				returning_trajectory.clear();
+				ema_distance = -1.0f;
+			}
+		}
+		// /*------------
+		// End of Moving Average (Mean) of Past Distances
+		// -------------*/
 
-		// 	previous_ratio_distance_lag_1 = previous_ratio_distance; // -1 , 20
-		// 	previous_ratio_distance = start_to_end_distance / optimal_distance; // 20 , 22	
-		//  }
+		// /*------------
+		// This is Trajectory Tortuosity Method
+		// -------------*/
+
+		// // If not the very first step, update distance_traveled
+		// if (returning_trajectory.size() > 1) {
+		// 	distance_traveled += (GetPosition() - previous_location).Length();
+		// }
+		// previous_location = GetPosition();
+		// //argos::LOG << "Distance traveled: " << distance_traveled << std::endl;
+		// // Then, once your window is full, start calculating tortuosity
+		// if (returning_trajectory.size() == 100) {
+		// 	argos::Real euclidean_distance = 
+		// 		(returning_trajectory.back() - returning_trajectory.front()).Length();
+
+		// 	argos::Real tortuosity = distance_traveled / euclidean_distance;
+		// 	//argos::LOG << "Distance traveled: " << distance_traveled << " - " << "Euclidean distance: " << euclidean_distance << std::endl;
+		// 	// the higher the threshold the less strict the algorithm is
+		// 	if (tortuosity > 4.0 && (GetPosition().Length() < 2.0)) {
+		// 		CPFA_state = CONGESTED;
+		// 		turning_left = true;
+		// 		argos::LOG << "Tortuosity: " << tortuosity << std::endl;
+		// 		returning_trajectory.clear();
+		// 		distance_traveled = 0.0;
+		// 	}
+		// }
+		// // Slide the window forward after it's full
+		// if (returning_trajectory.size() >= 100) {
+		// 	// Subtract oldest segment before removing the point
+		// 	distance_traveled -= (returning_trajectory[1] - returning_trajectory[0]).Length();
+		// 	returning_trajectory.erase(returning_trajectory.begin());
+		// }
+
+		// /*------------
+		// End of Trajectory Tortuosity Method
+		// -------------*/
+
+		// argos::CVector2 current_position = GetPosition();
+		// returning_trajectory.push_back(current_position);
+		
+		// if (returning_trajectory.size() > 100) {
+		// 	returning_trajectory.erase(returning_trajectory.begin());
+		// }
+		
+		// // 2. Update distance_traveled for tortuosity (keep full rolling sum)
+		// if (returning_trajectory.size() > 1) {
+		// 	distance_traveled += (current_position - previous_location).Length();
+		// }
+		// previous_location = current_position;
+		
+		// // 3. If window full, compute stats
+		// if (returning_trajectory.size() == 100) {
+		// 	argos::CVector2 start = returning_trajectory.front();
+		// 	argos::CVector2 end = returning_trajectory.back();
+		
+		// 	float euclidean_distance = (end - start).Length();
+		
+		// 	// Update distance EMA (Exponential Moving Average)
+		// 	float alpha = 0.2; // smoothing factor between 0 (slow) and 1 (fast)
+		// 	float current_distance = euclidean_distance;
+		
+		// 	// Initialize EMA if needed
+		// 	if (ema_distance < 0.0f) ema_distance = current_distance;
+		// 	ema_distance = alpha * current_distance + (1.0f - alpha) * ema_distance;
+		
+		// 	// Track recent distances for mean + stddev
+		// 	recent_distances.push_back(current_distance);
+		// 	if (recent_distances.size() > 10) {
+		// 		recent_distances.erase(recent_distances.begin());
+		// 	}
+	
+		
+		// 	// 4. Congestion detection using combined signals
+		// 	float tortuosity = (euclidean_distance > 0.0f) ? distance_traveled / euclidean_distance : 1.0;
+		
+		// 	// Print debug info
+		// 	// argos::LOG << "[Robot " << GetId() << "] "
+		// 	// 		   << "Dist: " << current_distance
+		// 	// 		   << ", EMA: " << ema_distance
+		// 	// 		   << ", Mean: " << mean_distance
+		// 	// 		   << ", StdDev: " << stddev
+		// 	// 		   << ", Tortuosity: " << tortuosity << std::endl;
+		
+			
+		// 	// EMA Threshold (tighter, smoother)
+		// 	bool ema_dip = (current_distance < ema_distance * 0.5f);  // Drop below 50% of EMA
+		
+		// 	// Combined condition: must be below threshold AND inefficient path
+		// 	if ((ema_dip && tortuosity > 3.0) && current_position.Length() < 2.5f) {
+		// 		CPFA_state = CONGESTED;
+		// 		turning_left = true;
+		
+		// 		argos::LOG << "[Robot " << GetId() << "] Congestion Detected!"
+		// 				   << " Tortuosity: " << tortuosity
+		// 				   << " Dist: " << current_distance << std::endl;
+		
+		// 		returning_trajectory.clear();
+		// 		recent_distances.clear();
+		// 		distance_traveled = 0.0;
+		// 		ema_distance = -1.0f; // reset EMA
+		// 	}
+		
+		// 	// Slide distance_traveled to keep 100-step accuracy
+		// 	distance_traveled -= (returning_trajectory[1] - returning_trajectory[0]).Length();
+		// }		
         if (IsAtTarget()) {
             // Perform random search adjustment if the target is reached
             argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
