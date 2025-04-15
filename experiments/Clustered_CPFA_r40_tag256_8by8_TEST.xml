@@ -4,8 +4,8 @@
   <!-- * General configuration * -->
   <!-- ************************* -->
   <framework>
-    <system threads="0"/> <!-- 209426 --> <!-- 797403-->
-    <experiment length="300" random_seed="424842" ticks_per_second="32"/> <!-- the length is in seconds. The number of ticks is ticks_per_second*length-->
+    <system threads="0"/> <!-- 209426 --> <!-- 797403--> <!--424842-->
+    <experiment length="300" random_seed="602264" ticks_per_second="32"/> <!-- the length is in seconds. The number of ticks is ticks_per_second*length-->
   </framework>
 
   <!-- *************** -->
@@ -145,7 +145,7 @@
   <!-- * Visualization * -->
   <!-- ****************** -->
  
-<!-- <visualization>
+<visualization>
   <qt-opengl>
     <camera>
       <placements>
@@ -155,7 +155,7 @@
     <video output="output_video" frame_rate="32" quality="100" />
     <user_functions label="CPFA_qt_user_functions"/>
   </qt-opengl>
-</visualization> -->
+</visualization>
 <!--
  <visualization>
 

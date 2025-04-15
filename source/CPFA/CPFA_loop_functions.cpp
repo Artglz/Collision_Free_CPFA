@@ -349,20 +349,20 @@ void CPFA_loop_functions::PostStep() {
 	// cleaned this
 	// check if any robot picked up a resource, if so change isZoneActive to true
 	
-	if (!isZoneActive) {
-		argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
-		for (argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); ++it) {
-			argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-			BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-			CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-			if (c2.IsHoldingFood()) {
-				isZoneActive = true;
-				c2.setZoneActive(true);
-				argos::LOG << "Zone is active" << std::endl;
-				break;
-			}
-		}
-	}
+	// if (!isZoneActive) {
+	// 	argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
+	// 	for (argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); ++it) {
+	// 		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+	// 		if (c2.IsHoldingFood()) {
+	// 			isZoneActive = true;
+	// 			c2.setZoneActive(true);
+	// 			argos::LOG << "Zone is active" << std::endl;
+	// 			break;
+	// 		}
+	// 	}
+	// }
 
 }
 
