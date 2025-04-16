@@ -717,34 +717,34 @@ void CPFA_controller::Returning() {
 		// 		}
 		// 	}
 		// }
-		if (returning_trajectory.size() == 100) {
-			argos::CVector2 start = returning_trajectory.front();
-			argos::CVector2 end = returning_trajectory.back();
-			float euclidean_distance = (end - start).Length();
+		// if (returning_trajectory.size() == 100) {
+		// 	argos::CVector2 start = returning_trajectory.front();
+		// 	argos::CVector2 end = returning_trajectory.back();
+		// 	float euclidean_distance = (end - start).Length();
 		
-			// Initialize EMA if first time
-			if (ema_distance < 0.0f) {
-				ema_distance = euclidean_distance;
-			}
+		// 	// Initialize EMA if first time
+		// 	if (ema_distance < 0.0f) {
+		// 		ema_distance = euclidean_distance;
+		// 	}
 		
-			// Update EMA using smoothing factor (alpha)
-			float alpha = 0.2f;
-			ema_distance = alpha * euclidean_distance + (1.0f - alpha) * ema_distance;
+		// 	// Update EMA using smoothing factor (alpha)
+		// 	float alpha = 0.2f;
+		// 	ema_distance = alpha * euclidean_distance + (1.0f - alpha) * ema_distance;
 		
-			// Congestion detection: if distance is significantly less than EMA
-			if (euclidean_distance < ema_distance * 0.75f && GetPosition().Length() < 3.0f) {
-				argos::LOG << "[Robot " << GetId() << "] CONGESTION DETECTED — "
-						   << "Distance: " << euclidean_distance
-						   << ", EMA: " << ema_distance << std::endl;
+		// 	// Congestion detection: if distance is significantly less than EMA
+		// 	if (euclidean_distance < ema_distance * 0.75f && GetPosition().Length() < 3.0f) {
+		// 		argos::LOG << "[Robot " << GetId() << "] CONGESTION DETECTED — "
+		// 				   << "Distance: " << euclidean_distance
+		// 				   << ", EMA: " << ema_distance << std::endl;
 		
-				CPFA_state = CONGESTED;
-				turning_left = true;
-				LoopFunctions->totalCongested++;
-				// Reset state for next detection cycle
-				returning_trajectory.clear();
-				ema_distance = -1.0f;
-			}
-		}
+		// 		CPFA_state = CONGESTED;
+		// 		turning_left = true;
+		// 		LoopFunctions->totalCongested++;
+		// 		// Reset state for next detection cycle
+		// 		returning_trajectory.clear();
+		// 		ema_distance = -1.0f;
+		// 	}
+		// }
 		// /*------------
 		// End of Moving Average (Mean) of Past Distances
 		// -------------*/
@@ -753,34 +753,34 @@ void CPFA_controller::Returning() {
 		// This is Trajectory Tortuosity Method
 		// -------------*/
 
-		// // If not the very first step, update distance_traveled
-		// if (returning_trajectory.size() > 1) {
-		// 	distance_traveled += (GetPosition() - previous_location).Length();
-		// }
-		// previous_location = GetPosition();
-		// //argos::LOG << "Distance traveled: " << distance_traveled << std::endl;
-		// // Then, once your window is full, start calculating tortuosity
-		// if (returning_trajectory.size() == 100) {
-		// 	argos::Real euclidean_distance = 
-		// 		(returning_trajectory.back() - returning_trajectory.front()).Length();
+		// If not the very first step, update distance_traveled
+		if (returning_trajectory.size() > 1) {
+			distance_traveled += (GetPosition() - previous_location).Length();
+		}
+		previous_location = GetPosition();
+		//argos::LOG << "Distance traveled: " << distance_traveled << std::endl;
+		// Then, once your window is full, start calculating tortuosity
+		if (returning_trajectory.size() == 100) {
+			argos::Real euclidean_distance = 
+				(returning_trajectory.back() - returning_trajectory.front()).Length();
 
-		// 	argos::Real tortuosity = distance_traveled / euclidean_distance;
-		// 	//argos::LOG << "Distance traveled: " << distance_traveled << " - " << "Euclidean distance: " << euclidean_distance << std::endl;
-		// 	// the higher the threshold the less strict the algorithm is
-		// 	if (tortuosity > 4.0 && (GetPosition().Length() < 2.0)) {
-		// 		CPFA_state = CONGESTED;
-		// 		turning_left = true;
-		// 		argos::LOG << "Tortuosity: " << tortuosity << std::endl;
-		// 		returning_trajectory.clear();
-		// 		distance_traveled = 0.0;
-		// 	}
-		// }
-		// // Slide the window forward after it's full
-		// if (returning_trajectory.size() >= 100) {
-		// 	// Subtract oldest segment before removing the point
-		// 	distance_traveled -= (returning_trajectory[1] - returning_trajectory[0]).Length();
-		// 	returning_trajectory.erase(returning_trajectory.begin());
-		// }
+			argos::Real tortuosity = distance_traveled / euclidean_distance;
+			//argos::LOG << "Distance traveled: " << distance_traveled << " - " << "Euclidean distance: " << euclidean_distance << std::endl;
+			// the higher the threshold the less strict the algorithm is
+			if (tortuosity > 3.0 && (GetPosition().Length() < 2.0)) {
+				CPFA_state = CONGESTED;
+				turning_left = true;
+				argos::LOG << "Tortuosity: " << tortuosity << std::endl;
+				returning_trajectory.clear();
+				distance_traveled = 0.0;
+			}
+		}
+		// Slide the window forward after it's full
+		if (returning_trajectory.size() >= 100) {
+			// Subtract oldest segment before removing the point
+			distance_traveled -= (returning_trajectory[1] - returning_trajectory[0]).Length();
+			returning_trajectory.erase(returning_trajectory.begin());
+		}
 
 		// /*------------
 		// End of Trajectory Tortuosity Method
