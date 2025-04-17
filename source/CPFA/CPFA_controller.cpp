@@ -101,7 +101,14 @@ void CPFA_controller::ControlStep() {
 			log_output_stream << "Unknown state" << endl;
 	}
 	*/
-
+    if (CPFA_state == FOLLOWING_ENTRY_PATH) {
+        TrailColor = CColor::RED; // Change to red when in FOLLOWING_EXIT_PATH
+    } else if(CPFA_state == FOLLOWING_EXIT_PATH){
+		TrailColor = CColor::GREEN;
+	}
+	else {
+        TrailColor = CColor::BLUE; // Default to blue for other states
+    }
 	// Add line so we can draw the trail
 	curr_time_in_seconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond()); 
      
@@ -273,7 +280,7 @@ bool CPFA_controller::CollisionDetection() {
 		// collisions as longs other robots don't interfere.
 		isCollisionDetected = true;
 		collision_counter++;
-		if(GetStatus() == "FOLLOWING_ENTRY_PATH") {
+		if(GetStatus() == "FOLLOWING_ENTRY_PATH" || GetStatus() == "FOLLOWING_EXIT_PATH") {
 			// argos::Real randomDecision = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
 			// if (randomDecision < 0.05) { // 50% chance to stop
 			// 	Real randomStopTime = RNG->Uniform(CRange<Real>(0.5, 1.0)); // Random stop time between 0.5 and 2 seconds
@@ -408,6 +415,7 @@ void CPFA_controller::SetLoopFunctions(CPFA_loop_functions* lf) {
 // Trying to modfiy state to prioritize dropped resources around the nest.
 void CPFA_controller::Departing()
 {
+	m_pcLEDs->SetAllColors(CColor::BLACK);
      //LOG<<"Departing..."<<endl;
     argos::Real distanceToTarget = (GetPosition() - GetTarget()).Length();
     argos::Real randomNumber = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
@@ -519,12 +527,14 @@ void CPFA_controller::FollowingEntryPath() {
 		isHoldingFood = false;
 		travelingTime += SimulationTick() - startTime;
 		startTime = SimulationTick();
+		m_pcLEDs->SetAllColors(CColor::BLACK);
 
 		return;
 	}
 
 	if (IsAtTarget()) {
 		// argos::LOG << "Robot " << GetId() << " is at waypoint " << currentWaypointIndex << std::endl;
+		m_pcLEDs->SetAllColors(CColor::RED);
 		currentWaypointIndex++;
 		// argos::LOG << "Next target is: " << EntryPath[currentWaypointIndex] << std::endl;
 		SetTarget(EntryPath[currentWaypointIndex]);
@@ -536,7 +546,7 @@ void CPFA_controller::FollowingEntryPath() {
 }
 
 void CPFA_controller::FollowingExitPath() {
-    
+    m_pcLEDs->SetAllColors(CColor::BLACK);
     // if (IsAtTarget() && exitPathIndex < ExitPath.size()) { //will keep following the path by setting each waypoint in the spiral as target
     //     SetTarget(ExitPath[exitPathIndex]);
     //     exitPathIndex++;
@@ -577,6 +587,7 @@ void CPFA_controller::FollowingExitPath() {
 void CPFA_controller::Searching() {
  //LOG<<"Searching..."<<endl;
 	// "scan" for food only every half of a second
+	m_pcLEDs->SetAllColors(CColor::BLACK);
 	if((SimulationTick() % (SimulationTicksPerSecond() / 2)) == 0) {
 		SetHoldingFood();
 	}
@@ -880,8 +891,9 @@ void CPFA_controller::Surveying() {
 // }
 
 void CPFA_controller::Returning() {
-	
+    m_pcLEDs->SetAllColors(CColor::BLACK);	
 	if(goingtoentry){
+		m_pcLEDs->SetAllColors(CColor::RED);
 		if (IsAtTarget()){
 			currentWaypointIndex += 1;
 			SetTarget(EntryPath[currentWaypointIndex]);
@@ -958,9 +970,9 @@ void CPFA_controller::Returning() {
 		// }
 
 		returning_trajectory.push_back(GetPosition());
-		if (returning_trajectory.size() > 100) {
-			returning_trajectory.erase(returning_trajectory.begin()); // slide the window
-		}
+		// if (returning_trajectory.size() > 100) {
+		// 	returning_trajectory.erase(returning_trajectory.begin()); // slide the window
+		// }
 		// if (returning_trajectory.size() == 100) {
 		// 	argos::CVector2 start = returning_trajectory.front();
 		// 	argos::CVector2 end = returning_trajectory.back();
@@ -1008,7 +1020,7 @@ void CPFA_controller::Returning() {
 			argos::Real tortuosity = distance_traveled / euclidean_distance;
 			//argos::LOG << "Distance traveled: " << distance_traveled << " - " << "Euclidean distance: " << euclidean_distance << std::endl;
 			// the higher the threshold the less strict the algorithm is
-			if (tortuosity > 3.0 && (GetPosition().Length() < 2.0)) {
+			if (tortuosity > 4.0 && (GetPosition().Length() < 2.0)) {
 				currentWaypointIndex = FindClosestPointOnPath(GetPosition(), EntryPath);
 				SetTarget(EntryPath[currentWaypointIndex]);	
 				SetIsHeadingToNest(false);
@@ -1018,13 +1030,13 @@ void CPFA_controller::Returning() {
 				// Reset state for next detection cycle
 				returning_trajectory.clear();
 				distance_traveled = 0.0;
+				return;
 			}
-		}
-		// Slide the window forward after it's full
-		if (returning_trajectory.size() >= 100) {
-			// Subtract oldest segment before removing the point
-			distance_traveled -= (returning_trajectory[1] - returning_trajectory[0]).Length();
-			returning_trajectory.erase(returning_trajectory.begin());
+
+			// Maintain sliding window: remove the oldest point
+			argos::Real removed_segment = (returning_trajectory[1] - returning_trajectory[0]).Length();
+			distance_traveled -= removed_segment;
+			returning_trajectory.pop_front();
 		}
 
 		/*------------

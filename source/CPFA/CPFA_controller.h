@@ -21,6 +21,7 @@ static unsigned int num_targets_collected = 0;
 class CPFA_loop_functions;
 #include <functional> // Required for std::hash
 #include <argos3/plugins/simulator/visualizations/qt-opengl/qtopengl_widget.h>
+#include <deque>
 
 class CPFA_controller : public BaseController {
 
@@ -58,27 +59,27 @@ class CPFA_controller : public BaseController {
 		int FindClosestPointOnPath(argos::CVector2 robotPos, std::vector<argos::CVector2> path);
 		argos::CVector2 EntryPoint = {1.4, 0};
 		//cirular path
-        std::vector<argos::CVector2> EntryPath = {
-            {1.20, 0.00}, {0.99, 0.60}, {0.52, 0.99}, {-0.06, 1.07}, {-0.58, 0.86}, 
-            {-0.90, 0.42}, {-0.95, -0.10}, {-0.72, -0.55}, {-0.32, -0.81}, {0.13, -0.82}, 
-            {0.51, -0.60}, {0.71, -0.24}, {0.69, 0.15}, {0.48, 0.46}, {0.17, 0.60}, 
-            {-0.15, 0.56}, {-0.39, 0.37}, {-0.48, 0.11}, {-0.43, -0.15}, {-0.27, -0.32}, 
-            {-0.06, -0.37}, {0.12, -0.31}, {0.23, -0.18}, {0.25, -0.03}, {0.19, 0.09}, 
-            {0.09, 0.14}, {0.01, 0.12}, {-0.04, 0.07}, {-0.04, 0.02}, {0.00, 0.00}
-        };
+        // std::vector<argos::CVector2> EntryPath = {
+        //     {1.20, 0.00}, {0.99, 0.60}, {0.52, 0.99}, {-0.06, 1.07}, {-0.58, 0.86}, 
+        //     {-0.90, 0.42}, {-0.95, -0.10}, {-0.72, -0.55}, {-0.32, -0.81}, {0.13, -0.82}, 
+        //     {0.51, -0.60}, {0.71, -0.24}, {0.69, 0.15}, {0.48, 0.46}, {0.17, 0.60}, 
+        //     {-0.15, 0.56}, {-0.39, 0.37}, {-0.48, 0.11}, {-0.43, -0.15}, {-0.27, -0.32}, 
+        //     {-0.06, -0.37}, {0.12, -0.31}, {0.23, -0.18}, {0.25, -0.03}, {0.19, 0.09}, 
+        //     {0.09, 0.14}, {0.01, 0.12}, {-0.04, 0.07}, {-0.04, 0.02}, {0.00, 0.00}
+        // };
 		//square path
-		// std::vector<argos::CVector2> EntryPath = {
-		// 	{1.13, -0.90},
-		// 	{-0.90, -0.90},
-		// 	{-0.90, 0.67},
-		// 	{0.67, 0.67},
-		// 	{0.67, -0.45},
-		// 	{-0.45, -0.45},
-		// 	{-0.45, 0.23},
-		// 	{0.23, 0.23},
-		// 	{0.23, 0.00},
-		// 	{0.00, 0.00}
-		// };
+		std::vector<argos::CVector2> EntryPath = {
+			{1.13, -0.90},
+			{-0.90, -0.90},
+			{-0.90, 0.67},
+			{0.67, 0.67},
+			{0.67, -0.45},
+			{-0.45, -0.45},
+			{-0.45, 0.23},
+			{0.23, 0.23},
+			{0.23, 0.00},
+			{0.00, 0.00}
+		};
         // std::vector<argos::CVector2> ExitPath = {
         //     {0.00, -0.00}, {0.04, -0.02}, {0.04, -0.07}, {-0.01, -0.12}, {-0.09, -0.14},
         //     {-0.19, -0.09}, {-0.25, 0.03}, {-0.23, 0.18}, {-0.12, 0.31}, {0.06, 0.37},
@@ -97,7 +98,7 @@ class CPFA_controller : public BaseController {
 		float tortuosity;
 		CVector2 previous_location;
 		int currentWaypointIndex;
-		bool goingtoentry;
+		bool goingtoentry = false;
 		
 		enum CPFA_state {
 			DEPARTING = 0,
@@ -177,7 +178,7 @@ class CPFA_controller : public BaseController {
 
 		const size_t WINDOW_SIZE = 150;
 		const size_t STEP_SIZE = 50;	
-		std::vector<argos::CVector2> returning_trajectory;	
+		std::deque<argos::CVector2> returning_trajectory;	
 		bool IsInCongestion();
 		float ema_distance = -1.0f;
 
