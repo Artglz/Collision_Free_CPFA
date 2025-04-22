@@ -584,13 +584,13 @@ void CPFA_controller::Returning() {
     local_state.angular_deviation = angular_deviation;
     
 	// log state values for each robot
-	argos::LOG << "Robot ID: " << GetId() << std::endl;
-	argos::LOG << "Distance to Nest: " << local_state.distance_to_nest << std::endl;
-	argos::LOG << "Timesteps Spent Returning: " << local_state.timesteps_returning << std::endl;
-	argos::LOG << "Collisions: " << local_state.collisions << std::endl;
-	argos::LOG << "Path Efficiency: " << local_state.path_efficiency << std::endl;
-	argos::LOG << "Angular Deviation: " << local_state.angular_deviation << std::endl;
-	argos::LOG << "----------------------------------------" << std::endl;
+	// argos::LOG << "Robot ID: " << GetId() << std::endl;
+	// argos::LOG << "Distance to Nest: " << local_state.distance_to_nest << std::endl;
+	// argos::LOG << "Timesteps Spent Returning: " << local_state.timesteps_returning << std::endl;
+	// argos::LOG << "Collisions: " << local_state.collisions << std::endl;
+	// argos::LOG << "Path Efficiency: " << local_state.path_efficiency << std::endl;
+	// argos::LOG << "Angular Deviation: " << local_state.angular_deviation << std::endl;
+	// argos::LOG << "----------------------------------------" << std::endl;
 
     // // Normalize state values
     // local_state.distance_to_nest /= LoopFunctions->GetMaxDistance();

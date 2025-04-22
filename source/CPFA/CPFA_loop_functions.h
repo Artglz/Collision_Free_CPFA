@@ -103,6 +103,8 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		double getRateOfLayingPheromone();
 		double getRateOfPheromoneDecay();
 		
+		void CallSimplePythonFunction();
+		void CallPythonTrainStep(const std::map<std::string, CPFA_controller::ActorState>& actorStates, const CriticState& gstate);
 	protected:
 
 		void setScore(double s);
@@ -193,8 +195,8 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 
 		// Setting up python environment
 		bool SetupPythonEnvironment();
-		// PyObject *pyFileName, *pyModule;
-		// PyObject *pyCongestion,	*pyCallCongestion,	*pyCongestionArgs;
+		PyObject *pyFileName, *pyModule;
+		PyObject *pyCongestion,	*pyCallCongestion,	*pyCongestionArgs;
 
         bool IsOutOfBounds(argos::CVector2 p, size_t length, size_t width);
 		bool IsCollidingWithNest(argos::CVector2 p);

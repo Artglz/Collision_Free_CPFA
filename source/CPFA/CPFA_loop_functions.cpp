@@ -130,7 +130,7 @@ void CPFA_loop_functions::Init(argos::TConfigurationNode &node) {
   
 	ForageList.clear(); 
 	last_time_in_minutes=0;
-	//SetupPythonEnvironment();
+	SetupPythonEnvironment();
  
 }
 
@@ -419,7 +419,6 @@ void CPFA_loop_functions::PostStep() {
 	// // Add to training buffer
 	// AddToCriticStateBuffer(global_state);	
 
-
 	size_t N = Num_robots;
 	float sum_efficiency = 0.0f;
 	float sum_collisions = 0.0f;
@@ -445,7 +444,13 @@ void CPFA_loop_functions::PostStep() {
 		cstate.total_collisions  = 0.0f;
 	}
 
-	// RLInterface::PublishStepData(m_localStates, cstate);
+	//log m_localStates
+	// for(auto it = m_localStates.begin(); it != m_localStates.end(); ++it) {
+	// 	argos::LOG << "robot["<< it->first <<"]="<< it->second.distance_to_nest << ", "<< it->second.timesteps_returning << ", "<< it->second.collisions << ", "<< it->second.path_efficiency << ", "<< it->second.angular_deviation << endl;
+	// }
+
+
+	CallPythonTrainStep(m_localStates, cstate);
 
 	m_localStates.clear();
 }
@@ -923,25 +928,22 @@ void CPFA_loop_functions::ConfigureFromGenome(Real* g)
 
 bool CPFA_loop_functions::SetupPythonEnvironment(){
 
-	// Py_Initialize();
-	// if(Py_IsInitialized()){
-	// 	LOG << "Python version: " << Py_GetVersion() << endl;
-	// 	return 1;
-	// } else {
-	// 	LOGERR << "ERROR: Python failed to initialize." << endl;
-	// 	return 0;	
-	// }
+	Py_Initialize();
+	if(Py_IsInitialized()){
+		LOG << "Python version: " << Py_GetVersion() << endl;
+		return 1;
+	} else {
+		LOGERR << "ERROR: Python failed to initialize." << endl;
+		return 0;	
+	}
 
 	
-	// PyObject *sys = PyImport_ImportModule("sys");
-	// PyObject *path = PyObject_GetAttrString(sys, "path");
-	// PyList_Append(path, PyUnicode_FromString("/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
-	// PyObject *repr = PyObject_Repr(path);
-	// const char* s = PyUnicode_AsUTF8(repr);
-	// printf("Python path: ");
-	// Py_DECREF(repr);
-	// Py_DECREF(path);
-	// Py_DECREF(sys);
+	PyObject *sys = PyImport_ImportModule("sys");
+	PyObject *path = PyObject_GetAttrString(sys, "path");
+	PyList_Append(path, PyUnicode_FromString("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
+
+	Py_DECREF(path);
+	Py_DECREF(sys);
 
 	// // Load the module
 	// pyFileName = PyUnicode_FromString("congestion");
@@ -964,23 +966,95 @@ bool CPFA_loop_functions::SetupPythonEnvironment(){
 	// pyCongestion = PyObject_GetAttrString(pyModule, "run_congestion_logic");
 	// Py_DECREF(pyModule);
 
-	// if (pyCongestion == NULL || !PyCallable_Check(pyCongestion)) {
-	// 	if (PyErr_Occurred()) {
-	// 		PyErr_Print();
-	// 	}
-	// 	LOG << "Failed to load Python function" << std::endl;
-	// 	Py_XDECREF(pyCongestion);
-	// 	Py_Finalize();
-	// 	return 0;
-	// }
-	// // PyObject *result = PyObject_CallObject(pyCongestion, NULL);
-    // // PyObject* str = PyObject_Repr(result);
-    // // const char* c_str = PyUnicode_AsUTF8(str);
-    // // printf("Python function returned: %s\n", c_str);
-    // // Py_XDECREF(str);
-	// return 1;
+
+    // if (!pyCongestion || !PyCallable_Check(pyCongestion)) {
+    //     LOGERR << "ERROR: Python function 'run_congestion_logic' is not callable." << std::endl;
+    //     if (PyErr_Occurred()) PyErr_Print();
+    //     Py_XDECREF(pyCongestion);
+    //     Py_Finalize();
+    //     return false;
+    // }
+
+    // LOG << "Python environment successfully initialized." << std::endl;
+    return true;
 
 }
 
+void CPFA_loop_functions::CallPythonTrainStep(const std::map<std::string, CPFA_controller::ActorState>& actorStates, const CriticState& gstate) {
+	if (!Py_IsInitialized()) {
+		Py_Initialize();
+	}
+
+	PyObject *sys = PyImport_ImportModule("sys");
+	PyObject *path = PyObject_GetAttrString(sys, "path");
+	PyList_Append(path, PyUnicode_FromString("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
+
+	Py_DECREF(path);
+	Py_DECREF(sys);
+
+	PyGILState_STATE gil = PyGILState_Ensure();
+
+	PyObject* pName = PyUnicode_FromString("rltrainer");
+	PyObject* pModule = PyImport_Import(pName);
+	Py_DECREF(pName);
+
+	if (!pModule) {
+		PyErr_Print();
+		std::cerr << "Failed to load rltrainer.py" << std::endl;
+		PyGILState_Release(gil);
+		return;
+	}
+
+	PyObject* pFunc = PyObject_GetAttrString(pModule, "train_step");
+	if (!pFunc || !PyCallable_Check(pFunc)) {
+		std::cerr << "Cannot find function 'train_step'" << std::endl;
+		Py_XDECREF(pFunc);
+		Py_DECREF(pModule);
+		PyGILState_Release(gil);
+		return;
+	}
+
+	// Build the actor_states Python dictionary
+	PyObject* pActorDict = PyDict_New();
+	for (auto const& [robot_id, st] : actorStates) {
+		PyObject* pList = PyList_New(5);
+		PyList_SetItem(pList, 0, PyFloat_FromDouble(st.distance_to_nest));
+		PyList_SetItem(pList, 1, PyLong_FromLong(st.timesteps_returning));
+		PyList_SetItem(pList, 2, PyLong_FromLong(st.collisions));
+		PyList_SetItem(pList, 3, PyFloat_FromDouble(st.path_efficiency));
+		PyList_SetItem(pList, 4, PyFloat_FromDouble(st.angular_deviation));
+		PyDict_SetItem(pActorDict, PyUnicode_FromString(robot_id.c_str()), pList);
+		Py_DECREF(pList);
+	}
+
+	// Build the global_state Python list
+	PyObject* pGlobalList = PyList_New(3);
+	PyList_SetItem(pGlobalList, 0, PyFloat_FromDouble(gstate.nest_congestion_index));
+	PyList_SetItem(pGlobalList, 1, PyFloat_FromDouble(gstate.mean_path_efficiency));
+	PyList_SetItem(pGlobalList, 2, PyFloat_FromDouble(gstate.total_collisions));
+
+	// Build argument tuple
+	PyObject* pArgs = PyTuple_Pack(2, pActorDict, pGlobalList);
+
+	// Call Python function
+	PyObject* pReturn = PyObject_CallObject(pFunc, pArgs);
+
+	if (pReturn == nullptr) {
+		PyErr_Print();
+		std::cerr << "Python function call failed!" << std::endl;
+	} else {
+		std::cout << "Python function call succeeded!" << std::endl;
+		Py_DECREF(pReturn);
+	}
+
+	// Clean up
+	Py_DECREF(pArgs);
+	Py_DECREF(pActorDict);
+	Py_DECREF(pGlobalList);
+	Py_DECREF(pFunc);
+	Py_DECREF(pModule);
+
+	PyGILState_Release(gil);
+}
 
 REGISTER_LOOP_FUNCTIONS(CPFA_loop_functions, "CPFA_loop_functions")
