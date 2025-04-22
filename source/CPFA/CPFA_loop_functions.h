@@ -12,7 +12,6 @@
 #include <set>
 #include <algorithm> 
 #include <json/json.h>
-
 #pragma push_macro("slots")
 #undef slots
 #include "Python.h"
@@ -79,6 +78,20 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 
 			CollisionInfo(size_t r1, size_t r2, size_t ts)
 				: robot1(r1), robot2(r2), time_step(ts) {}
+		};
+		// struct ActorState {
+		// 	float distance_to_nest_normalized;   // Normalized to [0,1]
+		// 	int timesteps_returning;
+		// 	int collisions;
+		// 	float path_efficiency;               // optimal/actual
+		// 	int robots_nearby;                   // Local congestion awareness
+		// };
+		
+		// For global critic state
+		struct CriticState {
+			float nest_congestion_index; // Robots near nest / total robots
+			float mean_path_efficiency;  // Normalized efficiency across robots
+			int total_collisions; // Total collisions across all robots
 		};
 		unsigned int getNumberOfRobots();
         void increaseNumDistributedFoodByOne();
@@ -160,8 +173,10 @@ class CPFA_loop_functions : public argos::CLoopFunctions
       
                 vector<size_t>		ForageList;
 		argos::CVector2 NestPosition = {0, 0};
+
+		void RegisterActorState(string robot_id, const CPFA_controller::ActorState& state);
 	private:
-			
+		std::map<string, CPFA_controller::ActorState> m_localStates;
 		/* private helper functions */
 		void RandomFoodDistribution();
 		void ClusterFoodDistribution();
@@ -171,14 +186,10 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		std::vector<float> distanceToNestList; // this contains the distance to the nest for each robot, it will be cleared after each iteration
 		std::unordered_map<std::string, int> timesteps_returning_to_nest; // this contains the timesteps that each robot has been returning to the nest
 		std::unordered_map<std::string, int> collisions; // this contains the collisions while returning to nest
+		int total_collisions = 0; // this is the total number of collisions for gloabl state
 		double optimal_distance_to_nest; // this is the optimal distance to the nest
 		std::vector<float> ratio_distance_list;
 
-		// These are the main functions from my machine learning algorithm
-		double sigmoid(double z);
-		double euclideanDistance(double x1, double y1, double x2, double y2);
-		bool predictCongestion(size_t indexes, const std::vector<argos::CVector2>& coordinates, double ratio_distance_lag_1, double ratio_distance_lag_2, double angle_lag_1, double angle_lag_2);
-		double calculateAngle(const argos::CVector2& p1, const argos::CVector2& p2, const argos::CVector2& p3);
 
 		// Setting up python environment
 		bool SetupPythonEnvironment();

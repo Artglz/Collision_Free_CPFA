@@ -134,6 +134,9 @@ void CPFA_loop_functions::Init(argos::TConfigurationNode &node) {
  
 }
 
+void CPFA_loop_functions::RegisterActorState(string robot_id, const CPFA_controller::ActorState& state) {
+	m_localStates[robot_id] = state;
+}
 
 void CPFA_loop_functions::Reset() {
 	   if(VariableFoodPlacement == 0) {
@@ -210,201 +213,241 @@ void CPFA_loop_functions::PreStep() {
     }
 }
 
-
-// Euclidean distance between two points
-double CPFA_loop_functions::euclideanDistance(double x1, double y1, double x2, double y2) {
-    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
-}
-
-// Calculate sigmoid function
-double CPFA_loop_functions::sigmoid(double z) {
-    return 1.0 / (1.0 + exp(-z));
-}
-
-double CPFA_loop_functions::calculateAngle(const argos::CVector2& p1, const argos::CVector2& p2, const argos::CVector2& p3){
-	// Vectors
-	double dx1 = p2.GetX() - p1.GetX();
-	double dy1 = p2.GetY() - p1.GetY();
-	double dx2 = p3.GetX() - p2.GetX();
-	double dy2 = p3.GetY() - p2.GetY();
-
-	// Dot product and magnitudes
-	double dot_product = dx1 * dx2 + dy1 * dy2;
-	double mag_v1 = sqrt(dx1 * dx1 + dy1 * dy1);
-	double mag_v2 = sqrt(dx2 * dx2 + dy2 * dy2);
-
-	double angle = 0.0;
-	if (mag_v1 > 0 && mag_v2 > 0) {
-		double cosine_angle = dot_product / (mag_v1 * mag_v2);
-		cosine_angle = std::clamp(cosine_angle, -1.0, 1.0); // Clamp for stability
-		angle = acos(cosine_angle) * (180.0 / M_PI); // Convert to degrees
-	}
-	
-	return angle;
-}
-
-// Function to calculate features and predict congestion
-bool CPFA_loop_functions::predictCongestion(size_t indexes, const std::vector<argos::CVector2>& coordinates, double ratio_distance_lag_1, double ratio_distance_lag_2, double angle_lag_1, double angle_lag_2) {
-	// Validate indices
-    // if (start_index >= end_index || end_index > coordinates.size() || coordinates.size() < 50) {
-    //     std::cerr << "Error: Invalid indices or insufficient coordinates (expected at least 50).\n";
-    //     return false;
-    // }
-    // Load model parameters from JSON
-    std::ifstream file("/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/logistic_model_more_features.json");
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open logistic_model.json.\n";
-        return false;
-    }
-    Json::Value modelParams;
-    file >> modelParams;
-
-	size_t start_index = coordinates.size() - 150;
-	size_t end_index = coordinates.size();
-
-	// if (!modelParams["intercept"].isDouble()) {
-	// 	std::cerr << "Error: 'intercept' is not a double. Value: " << modelParams["intercept"] << std::endl;
-	// }
-    // Extract coefficients
-    double intercept = modelParams["intercept"][0].asDouble();
-	double coef_ratio_distance = modelParams["coefficients"][0][0].asDouble();
-	double coef_angle = modelParams["coefficients"][0][1].asDouble();
-    double coef_indexes = modelParams["coefficients"][0][2].asDouble();
-	double coef_ratio_distance_lag_1 = modelParams["coefficients"][0][3].asDouble();
-	double coef_angle_lag_1 = modelParams["coefficients"][0][4].asDouble();
-    double coef_indexes_lag_1 = modelParams["coefficients"][0][5].asDouble();	
-	double coef_ratio_distance_lag_2 = modelParams["coefficients"][0][6].asDouble();
-	double coef_angle_lag_2 = modelParams["coefficients"][0][7].asDouble();
-    double coef_indexes_lag_2 = modelParams["coefficients"][0][8].asDouble();	
-
-
-	//print all the coefficients
-	//argos::LOG << "intercept: " << intercept << " coef_ratio_distance: " << coef_ratio_distance << " coef_angle: " << coef_angle << " coef_indexes: " << coef_indexes << " coef_ratio_distance_lag_1: " << coef_ratio_distance_lag_1 << " coef_angle_lag_1: " << coef_angle_lag_1 << " coef_indexes_lag_1: " << coef_indexes_lag_1 << " coef_ratio_distance_lag_2: " << coef_ratio_distance_lag_2 << " coef_angle_lag_2: " << coef_angle_lag_2 << " coef_indexes_lag_2: " << coef_indexes_lag_2 << std::endl;
-
-
-    // Calculate optimal distance based on a constant velocity (e.g., 0.08 units per step)
-    double optimal_distance = 0.08 * 150;
-
-    // Calculate start-to-end distance
-    double start_to_end_distance = euclideanDistance(
-        coordinates[start_index].GetX(), coordinates[start_index].GetY(),
-        coordinates[end_index].GetX(), coordinates[end_index].GetY()
-    );
-
-    // Calculate ratio_distance
-    double ratio_distance = start_to_end_distance / optimal_distance;
-	//log all the ratio distances
-	//argos::LOG << "ratio_distance: " << ratio_distance << "ratio_distance_lag_1: " << ratio_distance_lag_1 << "ratio_distance_lag_2: " << ratio_distance_lag_2 << std::endl;
-    // Calculate angle using the angle calculator logic
-    if (end_index - start_index < 3) {
-        std::cerr << "Error: Insufficient points to calculate angles.\n";
-        return false; // Need at least 3 points for angle calculation
-    }
-
-    size_t middle_index = (start_index + end_index) / 2;
-    argos::CVector2 p1 = coordinates[start_index];
-    argos::CVector2 p2 = coordinates[middle_index];
-    argos::CVector2 p3 = coordinates[end_index];
-
-    // Vectors
-    double dx1 = p2.GetX() - p1.GetX();
-    double dy1 = p2.GetY() - p1.GetY();
-    double dx2 = p3.GetX() - p2.GetX();
-    double dy2 = p3.GetY() - p2.GetY();
-
-    // Dot product and magnitudes
-    double dot_product = dx1 * dx2 + dy1 * dy2;
-    double mag_v1 = sqrt(dx1 * dx1 + dy1 * dy1);
-    double mag_v2 = sqrt(dx2 * dx2 + dy2 * dy2);
-
-    double angle = 0.0;
-    if (mag_v1 > 0 && mag_v2 > 0) {
-        double cosine_angle = dot_product / (mag_v1 * mag_v2);
-        cosine_angle = std::clamp(cosine_angle, -1.0, 1.0); // Clamp for stability
-        angle = acos(cosine_angle) * (180.0 / M_PI); // Convert to degrees
-    }
-
-	//argos::LOG << "indexes: " << indexes << " " << indexes-100 << " " << indexes-200 << std::endl;
-
-    // Logistic regression probability
-	double z = intercept +
-			   (coef_indexes * static_cast<double>(indexes)) +
-			   (coef_ratio_distance * ratio_distance) +
-			   (coef_angle * angle) +
-			   (coef_ratio_distance_lag_1 * ratio_distance_lag_1) +
-			   (coef_angle_lag_1 * angle_lag_1) +
-			   (coef_indexes_lag_1 * static_cast<double>(indexes - 100)) +
-			   (coef_ratio_distance_lag_2 * ratio_distance_lag_2) +
-			   (coef_angle_lag_2 * angle_lag_2) +
-			   (coef_indexes_lag_2 * static_cast<double>(indexes - 200));
-
-    double probability = sigmoid(z); // Ensure sigmoid function is defined
-
-    // Predict if the robot is congested
-    return probability >= 0.5;
-}
-
 void CPFA_loop_functions::PostStep() {
 	// cleaned this
 	
 
-	// Get distance to nest
-	distanceToNestList.clear();
-	argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
-	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
-		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-		float distanceToNest = (c2.GetPosition() - NestPosition).Length();
-		distanceToNestList.push_back(distanceToNest);
-	}
-	// Count timesteps spent returning to nest
-	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
-		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-		if(c2.GetStatus() == "RETURNING") {
-			if(timesteps_returning_to_nest[c2.GetId()] == 0){
-				argos::CVector2 ResourcePickupPosition = c2.GetPosition();
-			}
-			timesteps_returning_to_nest[c2.GetId()] += 1;
-		}else{
-			timesteps_returning_to_nest[c2.GetId()] = 0;
-		}
-	}
+	// // Get distance to nest
+	// distanceToNestList.clear();
+	// argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
+	// for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+	// 	argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 	BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 	CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+	// 	float distanceToNest = (c2.GetPosition() - NestPosition).Length();
+	// 	distanceToNestList.push_back(distanceToNest);
+	// }
+	// // Count timesteps spent returning to nest
+	// for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+	// 	argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 	BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 	CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+	// 	if(c2.GetStatus() == "RETURNING") {
+	// 		if(timesteps_returning_to_nest[c2.GetId()] == 0){
+	// 			argos::CVector2 ResourcePickupPosition = c2.GetPosition();
+	// 		}
+	// 		timesteps_returning_to_nest[c2.GetId()] += 1;
+	// 	}else{
+	// 		timesteps_returning_to_nest[c2.GetId()] = 0;
+	// 	}
+	// }
 
-	// get number of collisions for each robot while returning to the nest
-	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
-		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-		if(c2.GetStatus() == "RETURNING") {
-			collisions[c2.GetId()] = c2.collisions_in_returning;
-		}
-	}
+	// // get number of collisions for each robot while returning to the nest
+	// for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+	// 	argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 	BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 	CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+	// 	if(c2.GetStatus() == "RETURNING") {
+	// 		collisions[c2.GetId()] = c2.collisions_in_returning;
+	// 	}
+	// }
 
-	// Get the (actual distance / optimal distance) to the nest
-	ratio_distance_list.clear();
-	for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
-		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-		if(c2.GetStatus() == "RETURNING") {
-			double optimal_distance = 0.08 * timesteps_returning_to_nest[c2.GetId()];
-			double actual_distance = (c2.GetPosition() - ResourcePickupPosition).Length();
-			double ratio_distance = actual_distance / optimal_distance;
-			ratio_distance_list.push_back(ratio_distance);
-		}
-	}	
+	// // Get the (optimal distance / actual distance) to the nest
+	// ratio_distance_list.clear();
+	// for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+	// 	argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 	BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 	CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+	// 	if(c2.GetStatus() == "RETURNING") {
+	// 		double optimal_distance = 0.08 * timesteps_returning_to_nest[c2.GetId()];
+	// 		double actual_distance = (c2.GetPosition() - ResourcePickupPosition).Length();
+	// 		double ratio_distance = optimal_distance / actual_distance;
+	// 		// does this make sense?
+	// 		// its just going to be a list of ratio distances?
+	// 		// this is invidual for each robot so maybe dictionary if anything 
+	// 		ratio_distance_list.push_back(ratio_distance);
+	// 	}
+	// }	
 
-	// Get robots within 1 unit of nest
+	// // Get robots within R locally
+	// for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+	// 	argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 	BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 	CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+	// 	//check how many robots are within R of the robot
+	// 	argos::CVector2 position = c2.GetPosition();
+	// 	int num_robots_within_R = 0;
+	// 	for(argos::CSpace::TMapPerType::iterator it2 = footbots.begin(); it2 != footbots.end(); it2++) {
+	// 		argos::CFootBotEntity& footBot2 = *argos::any_cast<argos::CFootBotEntity*>(it2->second);
+	// 		BaseController& c3 = dynamic_cast<BaseController&>(footBot2.GetControllableEntity().GetController());
+	// 		CPFA_controller& c4 = dynamic_cast<CPFA_controller&>(c3);
+	// 		if(c4.GetStatus() == "RETURNING") {
+	// 			argos::CVector2 position2 = c4.GetPosition();
+	// 			double distance = (position - position2).Length();
+	// 			if(distance <= 0.5) {
+	// 				num_robots_within_R++;
+	// 			}
+	// 		}
+	// 	}
+	// }		
 
-	// Add total collisions
+	// //get the nest congestion index to quantify how crowded the nest area is.
+	// num_robots_within_nest = 0;
+	// for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+	// 	argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 	BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 	CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+	// 	argos::CVector2 position = c2.GetPosition();
+	// 	double distance = (position - NestPosition).Length();
+	// 	if(distance <= 1.0) {
+	// 		num_robots_within_nest++;
+	// 	}	
+	// }
+	// nest_congestion_index = num_robots_within_nest / Num_robots;
 
-	// get the mean ratio distance
+	// // Add total collisions from collisions hashmap
+	// for(auto it = collisions.begin(); it != collisions.end(); ++it) {
+	// 	total_collisions += it->second;
+	// }
 
+	// // get the mean ratio distance from ratio_distance_list
+	// double mean_ratio_distance = 0.0;
+	// for(size_t i = 0; i < ratio_distance_list.size(); i++) {
+	// 	mean_ratio_distance += ratio_distance_list[i];
+	// }
+	// mean_ratio_distance /= ratio_distance_list.size();
+
+	// // get the mean distance to nest from distanceToNestList
+	// double mean_distance_to_nest = 0.0;
+	// for(size_t i = 0; i < distanceToNestList.size(); i++) {
+	// 	mean_distance_to_nest += distanceToNestList[i];
+	// }
+	// mean_distance_to_nest /= distanceToNestList.size();
+
+	// argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
+	// for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+	// 	argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+	// 	BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+	// 	CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+		
+	// 	int robotId = c2.GetId();
+	// 	argos::CVector2 position = c2.GetPosition();
+	// 	double distanceToNest = (position - NestPosition).Length();
+		
+	// 	// Store basic metrics for all robots
+	// 	robotData[robotId].position = position;
+	// 	robotData[robotId].distanceToNest = distanceToNest;
+		
+	// 	// Track robots near nest
+	// 	if(distanceToNest <= 1.0) {
+	// 		num_robots_within_nest++;
+	// 	}
+		
+	// 	total_distance_to_nest += distanceToNest;
+		
+	// 	// Handle returning robots
+	// 	if(c2.GetStatus() == "RETURNING") {
+	// 		returning_robots_count++;
+			
+	// 		// Calculate timesteps
+	// 		if(timesteps_returning_to_nest[robotId] == 0) {
+	// 			robotData[robotId].resourcePickupPosition = position;
+	// 		}
+	// 		timesteps_returning_to_nest[robotId] += 1;
+			
+	// 		// Track collisions
+	// 		robotData[robotId].collisions = c2.collisions_in_returning;
+	// 		total_collisions += c2.collisions_in_returning;
+			
+	// 		// Calculate path efficiency
+	// 		double optimal_distance = (robotData[robotId].resourcePickupPosition - NestPosition).Length();
+	// 		double actual_distance = timesteps_returning_to_nest[robotId] * 0.08; // Assuming constant speed
+	// 		double ratio_distance = optimal_distance / actual_distance;
+	// 		robotData[robotId].pathEfficiency = ratio_distance;
+	// 	} else {
+	// 		timesteps_returning_to_nest[robotId] = 0;
+	// 	}
+	// }
 	
+	// // Calculate global metrics
+	// nest_congestion_index = static_cast<float>(num_robots_within_nest) / Num_robots;
+	// mean_distance_to_nest = total_distance_to_nest / footbots.size();
+	
+	// // Calculate robots within range R for each returning robot
+	// for(auto& robot_pair : robotData) {
+	// 	if(timesteps_returning_to_nest[robot_pair.first] > 0) {
+	// 		int nearby_robots = 0;
+	// 		for(auto& other_robot : robotData) {
+	// 			if(robot_pair.first != other_robot.first && 
+	// 			   timesteps_returning_to_nest[other_robot.first] > 0) {
+	// 				double distance = (robot_pair.second.position - other_robot.second.position).Length();
+	// 				if(distance <= 0.5) {
+	// 					nearby_robots++;
+	// 				}
+	// 			}
+	// 		}
+	// 		robotData[robot_pair.first].robotsNearby = nearby_robots;
+	// 	}
+	// }
+	
+	// // For each returning robot
+	// for(auto& robot_pair : robotData) {
+	// 	int robotId = robot_pair.first;
+	// 	if(timesteps_returning_to_nest[robotId] > 0) {
+	// 		// Create actor state
+	// 		ActorState state;
+	// 		state.distance_to_nest_normalized = robot_pair.second.distanceToNest / max_environment_distance;
+	// 		state.timesteps_returning = timesteps_returning_to_nest[robotId];
+	// 		state.collisions = robot_pair.second.collisions;
+	// 		state.path_efficiency = robot_pair.second.pathEfficiency;
+	// 		state.robots_nearby = robot_pair.second.robotsNearby;
+			
+	// 		// Normalize
+	// 		NormalizeActorState(state, max_environment_distance, max_timesteps);
+			
+	// 		// Add to RL training buffer
+	// 		AddToActorStateBuffer(robotId, state);
+	// 	}
+	// }
 
+	// // Create critic state once per time step
+	// CriticState global_state;
+	// global_state.nest_congestion_index = nest_congestion_index;
+	// global_state.total_collisions = total_collisions;
+	// global_state.remaining_resources = remaining_resources / total_resources;
+
+	// // Add to training buffer
+	// AddToCriticStateBuffer(global_state);	
+
+
+	size_t N = Num_robots;
+	float sum_efficiency = 0.0f;
+	float sum_collisions = 0.0f;
+	size_t near_nest_count = 0;
+
+	for (auto const& kv : m_localStates) {
+		const auto& st = kv.second;
+		sum_efficiency += st.path_efficiency;
+		sum_collisions += static_cast<float>(st.collisions);
+		if (st.distance_to_nest <= 0.05f) {
+		++near_nest_count;
+		}
+	}
+
+	CriticState cstate;
+	if (N > 0) {
+		cstate.mean_path_efficiency   = sum_efficiency / static_cast<float>(m_localStates.size());
+		cstate.nest_congestion_index  = static_cast<float>(near_nest_count) / static_cast<float>(N);
+		cstate.total_collisions  = sum_collisions / static_cast<float>(m_localStates.size());
+	} else {
+		cstate.mean_path_efficiency   = 0.0f;
+		cstate.nest_congestion_index  = 0.0f;
+		cstate.total_collisions  = 0.0f;
+	}
+
+	// RLInterface::PublishStepData(m_localStates, cstate);
+
+	m_localStates.clear();
 }
 
 bool CPFA_loop_functions::IsExperimentFinished() {

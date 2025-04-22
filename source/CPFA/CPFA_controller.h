@@ -3,7 +3,7 @@
 
 #include <source/Base/BaseController.h>
 #include <source/Base/Pheromone.h>
-#include <source/CPFA/CPFA_loop_functions.h>
+// #include <source/CPFA/CPFA_loop_functions.h>
 /* Definition of the LEDs actuator */
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
 #include <argos3/plugins/robots/foot-bot/simulator/footbot_entity.h>
@@ -64,7 +64,14 @@ class CPFA_controller : public BaseController {
 			RETURNING = 2,
 			SURVEYING = 3
 		} CPFA_state;		
-
+		
+		struct ActorState {
+			float distance_to_nest;     // Normalized to [0,1]
+			int timesteps_returning;
+			int collisions;
+			float path_efficiency;      // optimal/actual
+			float angular_deviation;    // angle between optimal and current direction
+		};
 	private:
   string 			controllerID;//qilu 07/26/2016
 		CCI_DifferentialSteeringActuator* m_pcWheels; //defining wheels
@@ -130,9 +137,21 @@ class CPFA_controller : public BaseController {
 
 		void UpdateTargetRayList();
 
+   		// RL state tracking
+		bool first_time_returning = true;
+		argos::CVector2 resource_pickup_position;
+		argos::CVector2 last_position;
+		float optimal_distance_to_nest = 0.0f;
+		int timesteps_returning = 0;
+		float total_returning_path_length = 0.0f;
+		float path_efficiency = 1.0f;
+		
+		// Function to update RL state
+		void UpdateRLState(const ActorState& state);
+
+		bool IsInCongestion();
 
 		std::vector<argos::CVector2> returning_trajectory;	
-		bool IsInCongestion();
 
 
 
