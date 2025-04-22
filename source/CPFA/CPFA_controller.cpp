@@ -579,7 +579,7 @@ void CPFA_controller::FollowingExitPath() {
 	if (IsAtTarget()) {
 		//argos::LOG << "Reached intermediate target on exit path..." << std::endl;
         SetTarget(mainTarget);
-        CPFA_state = DEPARTING;  // Or your default movement/search state
+        CPFA_state = DEPARTING;  // Or   default movement/search state
     }
 }
 
@@ -1012,7 +1012,7 @@ void CPFA_controller::Returning() {
 		}
 		previous_location = GetPosition();
 		//argos::LOG << "Distance traveled: " << distance_traveled << std::endl;
-		// Then, once your window is full, start calculating tortuosity
+		// Then, once   window is full, start calculating tortuosity
 		if (returning_trajectory.size() == 100) {
 			argos::Real euclidean_distance = 
 				(returning_trajectory.back() - returning_trajectory.front()).Length();
