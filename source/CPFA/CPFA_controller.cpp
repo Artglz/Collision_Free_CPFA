@@ -542,6 +542,13 @@ void CPFA_controller::Returning() {
     // Keep the basic movement logic
     m_pcWheels->SetLinearVelocity(0.8f, 0.8f);
     
+	//check if robotActions is empty
+	if(robotActions.size() > 0){
+		argos::LOG << "Robot " << GetId() << ": " << robotActions[0] <<  ", " << robotActions[1] << " at " << SimulationTick() << std::endl;
+	}
+	
+
+
     // Track return state variables for RL
     if (first_time_returning) {
         // Set up initial values when first entering return state

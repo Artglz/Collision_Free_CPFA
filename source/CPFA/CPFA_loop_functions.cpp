@@ -450,9 +450,29 @@ void CPFA_loop_functions::PostStep() {
 	// }
 
 
-	CallPythonTrainStep(m_localStates, cstate);
+	m_mapRobotActions = CallPythonTrainStep(m_localStates, cstate);
+	
+	// CallPythonTrainStep(m_localStates, cstate);
+	//log m_mapRobotActions
+	// for(auto it = m_mapRobotActions.begin(); it != m_mapRobotActions.end(); ++it) {
+	// 	argos::LOG << "robot["<< it->first <<"]="<< it->second[0] << ", "<< it->second[1] << endl;
+	// }
 
 	m_localStates.clear();
+
+	// if robot id from m_mapRobotActions matches with id of cpfa_controller robot, then store the action in std::vector<float> robotActions variable from cpfa_controller
+	argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
+	for (auto it = footbots.begin(); it != footbots.end(); ++it) {
+		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+		string robot_id = c2.GetId();
+		
+		if (m_mapRobotActions.find(robot_id) != m_mapRobotActions.end()) {
+			//access std::vector<float> robotActions from cpfa_controller
+			c2.robotActions = m_mapRobotActions[robot_id];
+		}
+	}
 }
 
 bool CPFA_loop_functions::IsExperimentFinished() {
@@ -489,115 +509,104 @@ void CPFA_loop_functions::PostExperiment() {
     //  printf("%f\n", score);  
 	// argos::LOG << resources_dropped << " resources dropped" << std::endl;
 
-	argos::LOG << totalResourcesPickedUp << " resources picked up" << std::endl;	
+	// argos::LOG << totalResourcesPickedUp << " resources picked up" << std::endl;	
 
-    if (PrintFinalScore == 1) {
-        string type="";
-        if (FoodDistribution == 0) type = "random";
-        else if (FoodDistribution == 1) type = "cluster";
-        else type = "powerlaw";
+    // if (PrintFinalScore == 1) {
+    //     string type="";
+    //     if (FoodDistribution == 0) type = "random";
+    //     else if (FoodDistribution == 1) type = "cluster";
+    //     else type = "powerlaw";
             
-        ostringstream num_tag;
-        num_tag << FoodItemCount; 
+    //     ostringstream num_tag;
+    //     num_tag << FoodItemCount; 
               
-        ostringstream num_robots;
-        num_robots <<  Num_robots;
+    //     ostringstream num_robots;
+    //     num_robots <<  Num_robots;
    
-        ostringstream arena_width;
-        arena_width << ArenaWidth;
+    //     ostringstream arena_width;
+    //     arena_width << ArenaWidth;
         
-        ostringstream quardArena;
-        if(abs(NestPosition.GetX())>=1){ //the central nest is not in the center, this is a quard arena
-             quardArena << 1;
-         }
-         else{
-             quardArena << 0;
-        }
+    //     ostringstream quardArena;
+    //     if(abs(NestPosition.GetX())>=1){ //the central nest is not in the center, this is a quard arena
+    //          quardArena << 1;
+    //      }
+    //      else{
+    //          quardArena << 0;
+    //     }
         
-        string header = "./results/"+ type+"_CPFA_r"+num_robots.str()+"_tag"+num_tag.str()+"_"+arena_width.str()+"by"+arena_width.str()+"_quard_arena_" + quardArena.str() +"_";
+    //     string header = "./results/"+ type+"_CPFA_r"+num_robots.str()+"_tag"+num_tag.str()+"_"+arena_width.str()+"by"+arena_width.str()+"_quard_arena_" + quardArena.str() +"_";
        
-        unsigned int ticks_per_second = GetSimulator().GetPhysicsEngine("dyn2d").GetInverseSimulationClockTick();//qilu 02/06/2021
+    //     unsigned int ticks_per_second = GetSimulator().GetPhysicsEngine("dyn2d").GetInverseSimulationClockTick();//qilu 02/06/2021
        
-        /* Real total_travel_time=0;
-        Real total_search_time=0;
-        ofstream travelSearchTimeDataOutput((header+"TravelSearchTimeData.txt").c_str(), ios::app);
-        */
+    //     /* Real total_travel_time=0;
+    //     Real total_search_time=0;
+    //     ofstream travelSearchTimeDataOutput((header+"TravelSearchTimeData.txt").c_str(), ios::app);
+    //     */
         
         
-        argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
+    //     argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
          
-        for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
-            argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-            BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-            CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-            CollisionTime += c2.GetCollisionTime();
+    //     for(argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); it++) {
+    //         argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+    //         BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+    //         CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+    //         CollisionTime += c2.GetCollisionTime();
             
-            /*if(c2.GetStatus() == "SEARCHING"){
-                total_search_time += SimTime-c2.GetTravelingTime();
-                total_travel_time += c2.GetTravelingTime();
-	    }
-            else {
-		total_search_time += c2.GetSearchingTime();
-		total_travel_time += SimTime-c2.GetSearchingTime();
-            } */        
-        }
-        //travelSearchTimeDataOutput<< total_travel_time/ticks_per_second<<", "<<total_search_time/ticks_per_second<<endl;
-        //travelSearchTimeDataOutput.close();   
+    //         /*if(c2.GetStatus() == "SEARCHING"){
+    //             total_search_time += SimTime-c2.GetTravelingTime();
+    //             total_travel_time += c2.GetTravelingTime();
+	//     }
+    //         else {
+	// 	total_search_time += c2.GetSearchingTime();
+	// 	total_travel_time += SimTime-c2.GetSearchingTime();
+    //         } */        
+    //     }
+    //     //travelSearchTimeDataOutput<< total_travel_time/ticks_per_second<<", "<<total_search_time/ticks_per_second<<endl;
+    //     //travelSearchTimeDataOutput.close();   
              
-        ofstream dataOutput( (header+ "iAntTagDa.txt").c_str(), ios::app);
-        // output to file
-        if(dataOutput.tellp() == 0) {
-            dataOutput << "tags_collected, collisions_in_seconds, time_in_minutes, random_seed\n";//qilu 08/18
-        }
+    //     ofstream dataOutput( (header+ "iAntTagDa.txt").c_str(), ios::app);
+    //     // output to file
+    //     if(dataOutput.tellp() == 0) {
+    //         dataOutput << "tags_collected, collisions_in_seconds, time_in_minutes, random_seed\n";//qilu 08/18
+    //     }
     
-        //dataOutput <<data.CollisionTime/16.0<<", "<< time_in_minutes << ", " << data.RandomSeed << endl;
-        //dataOutput << Score() << ", "<<(CollisionTime-16*Score())/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
-        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", " << totalResourcesPickedUp << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
-        dataOutput.close();
+    //     //dataOutput <<data.CollisionTime/16.0<<", "<< time_in_minutes << ", " << data.RandomSeed << endl;
+    //     //dataOutput << Score() << ", "<<(CollisionTime-16*Score())/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+    //     dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", " << totalResourcesPickedUp << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+    //     dataOutput.close();
 
-		/*
-        ofstream densityOutput( ("./results/densities.txt"), ios::app);
-        densityOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
-        densityOutput.close();
-		*/
-        ofstream forageDataOutput((header+"ForageData.txt").c_str(), ios::app);
-        if(ForageList.size()!=0) forageDataOutput<<"Forage: "<< ForageList[0];
-        for(size_t i=1; i< ForageList.size(); i++) forageDataOutput<<", "<<ForageList[i];
-        forageDataOutput<<"\n";
-        forageDataOutput.close();
+	// 	/*
+    //     ofstream densityOutput( ("./results/densities.txt"), ios::app);
+    //     densityOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+    //     densityOutput.close();
+	// 	*/
+    //     ofstream forageDataOutput((header+"ForageData.txt").c_str(), ios::app);
+    //     if(ForageList.size()!=0) forageDataOutput<<"Forage: "<< ForageList[0];
+    //     for(size_t i=1; i< ForageList.size(); i++) forageDataOutput<<", "<<ForageList[i];
+    //     forageDataOutput<<"\n";
+    //     forageDataOutput.close();
         
-        ofstream trajOutput( (header+ "iAntTrajData.txt").c_str(), ios::app);
-        // output to file
-        //if(trajOutput.tellp() == 0) {
-            trajOutput << "trajs\n";//qilu 11/2023
-        //}
+    //     ofstream trajOutput( (header+ "iAntTrajData.txt").c_str(), ios::app);
+    //     // output to file
+    //     //if(trajOutput.tellp() == 0) {
+    //         trajOutput << "trajs\n";//qilu 11/2023
+    //     //}
         
-        for(map<string, std::vector<CVector2>>::iterator it= Trajectory.begin(); it!= Trajectory.end(); ++it) {
+    //     for(map<string, std::vector<CVector2>>::iterator it= Trajectory.begin(); it!= Trajectory.end(); ++it) {
 			
-			for(size_t j = 0; j < it->second.size(); j++) {
-				trajOutput << it->second[j]<<"; ";
-			}
-			trajOutput << "\n";
+	// 		for(size_t j = 0; j < it->second.size(); j++) {
+	// 			trajOutput << it->second[j]<<"; ";
+	// 		}
+	// 		trajOutput << "\n";
 		
-		}
+	// 	}
         
-		trajOutput.close();
+	// 	trajOutput.close();
    
-      }  
-
-	// get food collected for each robot at each timestep
-	ofstream foodOutput( "./results/foodData.txt", ios::app);
-	if(foodOutput.tellp() == 0) {
-	   foodOutput << "food_collected\n";
-	   //foodOutput << CollectedFoodList.size() << endl;
-	}
-	for(size_t i = 0; i < CollectedFoodList.size(); i++) {
-	   foodOutput << CollectedFoodList[i] << ", ";
-	}
-	foodOutput << endl;
-	foodOutput.close();
+    //   }  
 
 
+	// CallPythonSaveModels();
 }
 
 
@@ -980,81 +989,174 @@ bool CPFA_loop_functions::SetupPythonEnvironment(){
 
 }
 
-void CPFA_loop_functions::CallPythonTrainStep(const std::map<std::string, CPFA_controller::ActorState>& actorStates, const CriticState& gstate) {
-	if (!Py_IsInitialized()) {
-		Py_Initialize();
-	}
+std::map<std::string, std::vector<float>> CPFA_loop_functions::CallPythonTrainStep(
+    const std::map<std::string, CPFA_controller::ActorState>& actorStates,
+    const CriticState& gstate) {
+    
+    std::map<std::string, std::vector<float>> actions;
+    
+    if (!Py_IsInitialized()) {
+        Py_Initialize();
+    }
 
-	PyObject *sys = PyImport_ImportModule("sys");
-	PyObject *path = PyObject_GetAttrString(sys, "path");
-	PyList_Append(path, PyUnicode_FromString("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
+    PyObject *sys = PyImport_ImportModule("sys");
+    PyObject *path = PyObject_GetAttrString(sys, "path");
+    PyList_Append(path, PyUnicode_FromString("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
+    PyList_Append(path, PyUnicode_FromString("/home/arturo/venvs/rl/lib/python3.10/site-packages"));
+    Py_DECREF(path);
+    Py_DECREF(sys);
 
-	Py_DECREF(path);
-	Py_DECREF(sys);
+    PyGILState_STATE gil = PyGILState_Ensure();
 
-	PyGILState_STATE gil = PyGILState_Ensure();
+    PyObject* pName = PyUnicode_FromString("rltrainer");
+    PyObject* pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
 
-	PyObject* pName = PyUnicode_FromString("rltrainer");
-	PyObject* pModule = PyImport_Import(pName);
-	Py_DECREF(pName);
+    if (!pModule) {
+        PyErr_Print();
+        std::cerr << "Failed to load rltrainer.py" << std::endl;
+        PyGILState_Release(gil);
+        return actions;
+    }
 
-	if (!pModule) {
-		PyErr_Print();
-		std::cerr << "Failed to load rltrainer.py" << std::endl;
-		PyGILState_Release(gil);
-		return;
-	}
+    PyObject* pFunc = PyObject_GetAttrString(pModule, "train_step");
+    if (!pFunc || !PyCallable_Check(pFunc)) {
+        std::cerr << "Cannot find function 'train_step'" << std::endl;
+        Py_XDECREF(pFunc);
+        Py_DECREF(pModule);
+        PyGILState_Release(gil);
+        return actions;
+    }
 
-	PyObject* pFunc = PyObject_GetAttrString(pModule, "train_step");
-	if (!pFunc || !PyCallable_Check(pFunc)) {
-		std::cerr << "Cannot find function 'train_step'" << std::endl;
-		Py_XDECREF(pFunc);
-		Py_DECREF(pModule);
-		PyGILState_Release(gil);
-		return;
-	}
+    // Build the actor_states Python dictionary
+    PyObject* pActorDict = PyDict_New();
+    for (auto const& [robot_id, st] : actorStates) {
+        PyObject* pList = PyList_New(5);
+        PyList_SetItem(pList, 0, PyFloat_FromDouble(st.distance_to_nest));
+        PyList_SetItem(pList, 1, PyLong_FromLong(st.timesteps_returning));
+        PyList_SetItem(pList, 2, PyLong_FromLong(st.collisions));
+        PyList_SetItem(pList, 3, PyFloat_FromDouble(st.path_efficiency));
+        PyList_SetItem(pList, 4, PyFloat_FromDouble(st.angular_deviation));
+        PyDict_SetItem(pActorDict, PyUnicode_FromString(robot_id.c_str()), pList);
+        Py_DECREF(pList);
+    }
 
-	// Build the actor_states Python dictionary
-	PyObject* pActorDict = PyDict_New();
-	for (auto const& [robot_id, st] : actorStates) {
-		PyObject* pList = PyList_New(5);
-		PyList_SetItem(pList, 0, PyFloat_FromDouble(st.distance_to_nest));
-		PyList_SetItem(pList, 1, PyLong_FromLong(st.timesteps_returning));
-		PyList_SetItem(pList, 2, PyLong_FromLong(st.collisions));
-		PyList_SetItem(pList, 3, PyFloat_FromDouble(st.path_efficiency));
-		PyList_SetItem(pList, 4, PyFloat_FromDouble(st.angular_deviation));
-		PyDict_SetItem(pActorDict, PyUnicode_FromString(robot_id.c_str()), pList);
-		Py_DECREF(pList);
-	}
+    // Build the global_state Python list
+    PyObject* pGlobalList = PyList_New(3);
+    PyList_SetItem(pGlobalList, 0, PyFloat_FromDouble(gstate.nest_congestion_index));
+    PyList_SetItem(pGlobalList, 1, PyFloat_FromDouble(gstate.mean_path_efficiency));
+    PyList_SetItem(pGlobalList, 2, PyFloat_FromDouble(gstate.total_collisions));
 
-	// Build the global_state Python list
-	PyObject* pGlobalList = PyList_New(3);
-	PyList_SetItem(pGlobalList, 0, PyFloat_FromDouble(gstate.nest_congestion_index));
-	PyList_SetItem(pGlobalList, 1, PyFloat_FromDouble(gstate.mean_path_efficiency));
-	PyList_SetItem(pGlobalList, 2, PyFloat_FromDouble(gstate.total_collisions));
+    // Build argument tuple
+    PyObject* pArgs = PyTuple_Pack(2, pActorDict, pGlobalList);
 
-	// Build argument tuple
-	PyObject* pArgs = PyTuple_Pack(2, pActorDict, pGlobalList);
+    // Call Python function
+    PyObject* pReturn = PyObject_CallObject(pFunc, pArgs);
 
-	// Call Python function
-	PyObject* pReturn = PyObject_CallObject(pFunc, pArgs);
+    if (!pReturn) {
+        PyErr_Print();
+        std::cerr << "Python function call failed!" << std::endl;
+    } else {
+        std::cout << "Python function call succeeded!" << std::endl;
 
-	if (pReturn == nullptr) {
-		PyErr_Print();
-		std::cerr << "Python function call failed!" << std::endl;
-	} else {
-		std::cout << "Python function call succeeded!" << std::endl;
-		Py_DECREF(pReturn);
-	}
+        if (PyDict_Check(pReturn)) {
+            PyObject *key, *value;
+            Py_ssize_t pos = 0;
 
-	// Clean up
-	Py_DECREF(pArgs);
-	Py_DECREF(pActorDict);
-	Py_DECREF(pGlobalList);
-	Py_DECREF(pFunc);
-	Py_DECREF(pModule);
+            while (PyDict_Next(pReturn, &pos, &key, &value)) {
+                if (!PyUnicode_Check(key) || !PyList_Check(value)) {
+                    continue;
+                }
 
-	PyGILState_Release(gil);
+                std::string robot_id = PyUnicode_AsUTF8(key);
+                std::vector<float> robot_actions;
+                Py_ssize_t list_size = PyList_Size(value);
+
+                for (Py_ssize_t i = 0; i < list_size; ++i) {
+                    PyObject* item = PyList_GetItem(value, i);  // Borrowed reference
+                    PyObject* float_obj = PyNumber_Float(item); // New reference
+                    if (float_obj) {
+                        float val = static_cast<float>(PyFloat_AsDouble(float_obj));
+                        robot_actions.push_back(val);
+                        Py_DECREF(float_obj);
+                    } else {
+                        PyErr_Print();
+                        std::cerr << "[WARNING] Failed to convert action item to float for robot " << robot_id << std::endl;
+                    }
+                }
+
+                actions[robot_id] = robot_actions;
+            }
+        } else {
+            std::cerr << "[ERROR] Python return is not a dictionary.\n";
+        }
+
+        Py_DECREF(pReturn);
+    }
+
+    // Clean up
+    Py_DECREF(pArgs);
+    Py_DECREF(pActorDict);
+    Py_DECREF(pGlobalList);
+    Py_DECREF(pFunc);
+    Py_DECREF(pModule);
+
+    PyGILState_Release(gil);
+
+    return actions;
+}
+
+void CPFA_loop_functions::CallPythonSaveModels() {
+    if (!Py_IsInitialized()) {
+        Py_Initialize();
+    }
+
+    PyGILState_STATE gil = PyGILState_Ensure();
+
+    // Import path
+    PyObject* sys = PyImport_ImportModule("sys");
+    PyObject* path = PyObject_GetAttrString(sys, "path");
+    PyList_Append(path, PyUnicode_FromString("/home/arturo/src/argos3/build_simulator/Collision_Free_CPFA/source/CPFA"));
+    PyList_Append(path, PyUnicode_FromString("/home/arturo/venvs/rl/lib/python3.10/site-packages"));
+    Py_DECREF(path);
+    Py_DECREF(sys);
+
+    // Import module
+    PyObject* pName = PyUnicode_FromString("rltrainer");
+    PyObject* pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+
+    if (!pModule) {
+        PyErr_Print();
+        std::cerr << "[ERROR] Failed to import Python module 'rltrainer'\n";
+        PyGILState_Release(gil);
+        return;
+    }
+
+    PyObject* pFunc = PyObject_GetAttrString(pModule, "save_models");
+    if (!pFunc || !PyCallable_Check(pFunc)) {
+        std::cerr << "[ERROR] Python function 'save_models' not found or not callable\n";
+        Py_XDECREF(pFunc);
+        Py_DECREF(pModule);
+        PyGILState_Release(gil);
+        return;
+    }
+
+    // Call Python function
+    PyObject* pReturn = PyObject_CallObject(pFunc, NULL);
+
+    if (!pReturn) {
+        PyErr_Print();
+        std::cerr << "[ERROR] Python function 'save_models' call failed\n";
+    } else {
+        std::cout << "[INFO] Python function 'save_models' executed successfully\n";
+        Py_DECREF(pReturn);
+    }
+
+    // Cleanup
+    Py_DECREF(pFunc);
+    Py_DECREF(pModule);
+    PyGILState_Release(gil);
 }
 
 REGISTER_LOOP_FUNCTIONS(CPFA_loop_functions, "CPFA_loop_functions")

@@ -46,7 +46,7 @@ link_libraries(${ARGOS_LDFLAGS})
 # Use FindPython3 to locate the necessary Python components
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 include_directories(${Python3_INCLUDE_DIRS})
-link_directories(${Python3_LIBRARIES})
+link_directories(libCPFA_controller ${Python3_LIBRARIES})
 
 # Check for required libraries to compile code depending on Qt and OpenGL.
 # include(ARGoSCheckQTOpenGL)

@@ -103,8 +103,10 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		double getRateOfLayingPheromone();
 		double getRateOfPheromoneDecay();
 		
-		void CallSimplePythonFunction();
-		void CallPythonTrainStep(const std::map<std::string, CPFA_controller::ActorState>& actorStates, const CriticState& gstate);
+		std::map<std::string, std::vector<float>> CallPythonTrainStep(const std::map<std::string, CPFA_controller::ActorState>& actorStates, const CriticState& gstate);
+		std::map<std::string, std::vector<float>> m_mapRobotActions;
+		void CallPythonSaveModels();
+		
 	protected:
 
 		void setScore(double s);

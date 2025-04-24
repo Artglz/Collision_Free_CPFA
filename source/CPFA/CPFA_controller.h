@@ -66,12 +66,14 @@ class CPFA_controller : public BaseController {
 		} CPFA_state;		
 		
 		struct ActorState {
-			float distance_to_nest;     // Normalized to [0,1]
+			float distance_to_nest;  
 			int timesteps_returning;
 			int collisions;
 			float path_efficiency;      // optimal/actual
 			float angular_deviation;    // angle between optimal and current direction
 		};
+		std::vector<float> robotActions;
+
 	private:
   string 			controllerID;//qilu 07/26/2016
 		CCI_DifferentialSteeringActuator* m_pcWheels; //defining wheels
