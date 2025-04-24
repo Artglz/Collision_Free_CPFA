@@ -230,29 +230,17 @@ bool CPFA_controller::CollisionDetection() {
 
 		if(collisionAngle <= 0.0)  {
 			//argos::LOG << collisionAngle << std::endl << collisionVector << std::endl << std::endl;
+			// argos::LOG << collisionAngle  << std::endl;
 			SetLeftTurn(collisionAngle); //qilu 09/24/2016
 		} else {
 			//argos::LOG << collisionAngle << std::endl << collisionVector << std::endl << std::endl;
+			// argos::LOG << collisionAngle  << std::endl;
 			SetRightTurn(collisionAngle); //qilu 09/24/2016
 		}
 
 	}
 
 	return isCollisionDetected;
-}
-
-void CPFA_controller::SetCongestion(bool value){
-	// if num == 0{
-	// 	isCongested = false;
-	// }
-	// else{
-	// 	isCongested = true;
-	// }
-	isCongested = value;
-}
-
-bool CPFA_controller::IsInCongestion(){
-	return isCongested;
 }
 
 void CPFA_controller::SetLoopFunctions(CPFA_loop_functions* lf) {
@@ -388,6 +376,7 @@ void CPFA_controller::Searching() {
 	if((SimulationTick() % (SimulationTicksPerSecond() / 2)) == 0) {
 		SetHoldingFood();
 	}
+	
 	// When not carrying food, calculate movement.
 	if(IsHoldingFood() == false) {
 		   argos::CVector2 distance = GetPosition() - GetTarget();
@@ -539,15 +528,13 @@ void CPFA_controller::Surveying() {
 }
 
 void CPFA_controller::Returning() {
-    // Keep the basic movement logic
-    m_pcWheels->SetLinearVelocity(0.8f, 0.8f);
-    
-	//check if robotActions is empty
-	if(robotActions.size() > 0){
-		argos::LOG << "Robot " << GetId() << ": " << robotActions[0] <<  ", " << robotActions[1] << " at " << SimulationTick() << std::endl;
-	}
-	
 
+	if (IsAtTarget()) {
+		//make it return to the nest
+		argos::LOG << "REACHED TURNING TARGET" << std::endl;
+		SetIsHeadingToNest(true);
+		SetTarget(LoopFunctions->NestPosition);
+	}
 
     // Track return state variables for RL
     if (first_time_returning) {
@@ -605,76 +592,99 @@ void CPFA_controller::Returning() {
     // Share state with RL framework
     UpdateRLState(local_state);
     
-    // Check if we've reached the nest
-    if (IsInTheNest()) {
-        // Reset return-specific variables
-        first_time_returning = true;
-        timesteps_returning = 0;
-        collisions_in_returning = 0;
-        total_returning_path_length = 0.0f;
-        
-        argos::Real poissonCDF_pLayRate = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfLayingPheromone);
-        argos::Real poissonCDF_sFollowRate = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity);
-        argos::Real r1 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
-        argos::Real r2 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
-        
-        if (isHoldingFood) {
-            // Drop off food logic
-            num_targets_collected++;
-            LoopFunctions->currNumCollectedFood++;
-            LoopFunctions->setScore(num_targets_collected);
-            
-            // Rest of the pheromone and site fidelity logic
-            if (poissonCDF_pLayRate > r1 && updateFidelity) {
-                // Pheromone sharing code
-                TrailToShare.push_back(LoopFunctions->NestPosition);
-                argos::Real timeInSeconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond());
-                Pheromone sharedPheromone(SiteFidelityPosition, TrailToShare, timeInSeconds, 
-                                         LoopFunctions->RateOfPheromoneDecay, ResourceDensity);
-                LoopFunctions->PheromoneList.push_back(sharedPheromone);
-                sharedPheromone.Deactivate();
-            }
-            TrailToShare.clear();
-        }
-        
-        // Decision making for next steps
-        if (updateFidelity && poissonCDF_sFollowRate > r2) {
-            // Use site fidelity
-            SetIsHeadingToNest(false);
-            SetTarget(SiteFidelityPosition);
-            isInformed = true;
-        } else if (SetTargetPheromone()) {
-            // Use pheromone waypoints
-            isInformed = true;
-            isUsingSiteFidelity = false;
-        } else {
-            // Use random search
-            SetRandomSearchLocation();
-            isInformed = false;
-            isUsingSiteFidelity = false;
-        }
-        
-        isGivingUpSearch = false;
-        CPFA_state = DEPARTING;
-        isHoldingFood = false;
-        travelingTime += SimulationTick() - startTime;
-        startTime = SimulationTick();
-    } else {
-        // Navigation logic when not at nest
-        if (IsAtTarget()) {
-            // Random search for nest
-            argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
-            argos::Real rand = RNG->Gaussian(USCV);
-            
-            argos::CRadians rotation(rand);
-            argos::CRadians angle1(rotation);
-            argos::CRadians angle2(GetHeading());
-            argos::CRadians turn_angle(angle1 + angle2);
-            argos::CVector2 turn_vector(SearchStepSize, turn_angle);
-            SetIsHeadingToNest(false);
-            SetTarget(turn_vector + GetPosition());
-        }
+	if(!moving_to_target){
+		// Check if we've reached the nest
+		if (IsInTheNest()) {
+			// Reset return-specific variables
+			first_time_returning = true;
+			timesteps_returning = 0;
+			collisions_in_returning = 0;
+			total_returning_path_length = 0.0f;
+			
+			argos::Real poissonCDF_pLayRate = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfLayingPheromone);
+			argos::Real poissonCDF_sFollowRate = GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity);
+			argos::Real r1 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
+			argos::Real r2 = RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0));
+			
+			if (isHoldingFood) {
+				// Drop off food logic
+				num_targets_collected++;
+				LoopFunctions->currNumCollectedFood++;
+				LoopFunctions->setScore(num_targets_collected);
+				
+				// Rest of the pheromone and site fidelity logic
+				if (poissonCDF_pLayRate > r1 && updateFidelity) {
+					// Pheromone sharing code
+					TrailToShare.push_back(LoopFunctions->NestPosition);
+					argos::Real timeInSeconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond());
+					Pheromone sharedPheromone(SiteFidelityPosition, TrailToShare, timeInSeconds, 
+											LoopFunctions->RateOfPheromoneDecay, ResourceDensity);
+					LoopFunctions->PheromoneList.push_back(sharedPheromone);
+					sharedPheromone.Deactivate();
+				}
+				TrailToShare.clear();
+			}
+			
+			// Decision making for next steps
+			if (updateFidelity && poissonCDF_sFollowRate > r2) {
+				// Use site fidelity
+				SetIsHeadingToNest(false);
+				SetTarget(SiteFidelityPosition);
+				isInformed = true;
+			} else if (SetTargetPheromone()) {
+				// Use pheromone waypoints
+				isInformed = true;
+				isUsingSiteFidelity = false;
+			} else {
+				// Use random search
+				SetRandomSearchLocation();
+				isInformed = false;
+				isUsingSiteFidelity = false;
+			}
+			
+			isGivingUpSearch = false;
+			CPFA_state = DEPARTING;
+			isHoldingFood = false;
+			travelingTime += SimulationTick() - startTime;
+			startTime = SimulationTick();
+			useDirectWheelControl = false;
+		} else {
+			// Navigation logic when not at nest
+			if (IsAtTarget()) {
+				// Random search for nest
+				argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
+				argos::Real rand = RNG->Gaussian(USCV);
+				
+				argos::CRadians rotation(rand);
+				argos::CRadians angle1(rotation);
+				argos::CRadians angle2(GetHeading());
+				argos::CRadians turn_angle(angle1 + angle2);
+				argos::CVector2 turn_vector(SearchStepSize, turn_angle);
+				SetIsHeadingToNest(false);
+				SetTarget(turn_vector + GetPosition());
+			}
+		}
+	}
+    if (actionRepeatCounter > 0) {
+        actionRepeatCounter--;
+        return;  // Still executing the previous action
     }
+
+    if (robotActions.size() >= 2) {
+        argos::LOG << "Robot " << GetId() << ": " << robotActions[0]
+                   << ", " << robotActions[1] << " at " << SimulationTick() << std::endl;
+
+        // SetRightTurn(robotActions[0]);
+		CRadians turn_angle(ToRadians(CDegrees(robotActions[0])));
+		CRadians new_heading = GetHeading() + turn_angle;
+		CVector2 move_vector(0.3, new_heading);  // 0.3 units forward
+		SetIsHeadingToNest(false);
+		SetTarget(GetPosition() + move_vector);
+		moving_to_target = true;
+		SetRightTurn(robotActions[0]);
+        useDirectWheelControl = true;
+        actionRepeatCounter = 200;  // Repeat this action for 100 ticks
+    }	
 }
 
 void CPFA_controller::UpdateRLState(const ActorState& state) {

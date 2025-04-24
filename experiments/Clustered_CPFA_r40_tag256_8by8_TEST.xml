@@ -89,7 +89,7 @@
            <distribute>
       <position center="1, 1, 0.0" distances="0.3, 0.3, 0.0" layout="4, 3, 1" method="grid"/>
       <orientation method="constant" values="0.0, 0.0, 0.0"/>
-      <entity max_trials="100" quantity="8">
+      <entity max_trials="100" quantity="2">
         <foot-bot id="F0">
           <controller config="CPFA"/>
         </foot-bot>
@@ -97,7 +97,7 @@
     </distribute>
 
 
-    <distribute>
+    <!-- <distribute>
       <position center="1, -1, 0.0" distances="0.3, 0.3, 0.0" layout="4, 3, 1" method="grid"/>
       <orientation method="constant" values="0.0, 0.0, 0.0"/>
       <entity max_trials="100" quantity="8">
@@ -126,7 +126,7 @@
           <controller config="CPFA"/>
         </foot-bot>
       </entity>
-    </distribute>
+    </distribute> -->
  
   </arena> 
     

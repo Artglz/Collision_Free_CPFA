@@ -54,7 +54,6 @@ class CPFA_controller : public BaseController {
     Real last_time_in_seconds; 
         
 		bool CollisionDetection() override;
-		void SetCongestion(bool value);
 		// # of collisions in returning state
 		int collisions_in_returning = 0;
 
@@ -72,8 +71,10 @@ class CPFA_controller : public BaseController {
 			float path_efficiency;      // optimal/actual
 			float angular_deviation;    // angle between optimal and current direction
 		};
-		std::vector<float> robotActions;
-
+		// std::vector<float> robotActions;
+		int actionRepeatCounter = 0;           // how many steps to keep current action
+		
+		bool moving_to_target = false;
 	private:
   string 			controllerID;//qilu 07/26/2016
 		CCI_DifferentialSteeringActuator* m_pcWheels; //defining wheels
@@ -151,8 +152,7 @@ class CPFA_controller : public BaseController {
 		// Function to update RL state
 		void UpdateRLState(const ActorState& state);
 
-		bool IsInCongestion();
-
+\
 		std::vector<argos::CVector2> returning_trajectory;	
 
 

@@ -65,6 +65,11 @@ class Actor(nn.Module):
             dist = Normal(mean, std)
             action = dist.sample()
             return action
+
+        action[..., 0] = torch.clamp(action[..., 0], -180.0, 180.0)
+        action[..., 1] = torch.clamp(action[..., 1], 2.0, 32.0) 
+
+        return action
     
     def evaluate(self, state, action):
         mean, std = self(state)

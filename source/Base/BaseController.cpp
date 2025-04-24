@@ -358,7 +358,9 @@ void BaseController::Stop() {
 }
 
 void BaseController::Move() {
-
+	if (useDirectWheelControl) {
+		RobotForwardSpeed = robotActions[1];
+	}
 	if(Wait() == true) return;
 
 	collisionFlag = CollisionDetection();
