@@ -73,7 +73,9 @@ class CPFA_controller : public BaseController {
 		};
 		// std::vector<float> robotActions;
 		int actionRepeatCounter = 0;           // how many steps to keep current action
-		
+		std::deque<int> collision_history; // history of collisions
+		int window_size = 10; // size of the history window for collisions
+		float recent_collision_sum = 0; // sum of recent collisions
 		bool moving_to_target = false;
 	private:
   string 			controllerID;//qilu 07/26/2016

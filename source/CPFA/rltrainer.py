@@ -284,10 +284,15 @@ class RLTrainer:
             if training:
                 action = actor.get_action(state_tensor, deterministic=False)
                 log_prob, _ = actor.evaluate(state_tensor, action)
-                return action.squeeze().cpu().numpy(), log_prob.item()
             else:
                 action = actor.get_action(state_tensor, deterministic=True)
-                return action.squeeze().cpu().numpy(), 0
+                log_prob = torch.zeros(1)
+
+        # Clamp final action before returning
+        action[..., 0] = torch.clamp(action[..., 0], -180.0, 180.0)  # Angle
+        action[..., 1] = torch.clamp(action[..., 1],  2.0, 32.0)        # Speed
+
+        return action.squeeze().cpu().numpy(), log_prob.item()
     
     def train_step(self, actor_states, global_state):
         """Process a training step from ARGoS simulation"""
@@ -380,8 +385,8 @@ class RLTrainer:
                     'total_collisions': global_state_array[2]
                 })
                 
-                print(f"Step {self.step_count}, Avg Reward: {np.mean(self.rewards_history):.3f}, "
-                      f"Efficiency: {avg_efficiency:.3f}, Collisions: {avg_collisions:.2f}")
+                # print(f"Step {self.step_count}, Avg Reward: {np.mean(self.rewards_history):.3f}, "
+                #       f"Efficiency: {avg_efficiency:.3f}, Collisions: {avg_collisions:.2f}")
         
         # Encode actions as a JSON-serializable dictionary for C++
         action_dict = {robot_id: action.tolist() for robot_id, action in actions.items()}

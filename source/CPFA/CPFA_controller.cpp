@@ -228,7 +228,10 @@ bool CPFA_controller::CollisionDetection() {
 		Real randomNumber = RNG->Uniform(CRange<Real>(0.5, 1.0));
         collisionDelay = SimulationTick() + (size_t)(randomNumber*SimulationTicksPerSecond());//qilu 10/26/2016	
 
-		if(collisionAngle <= 0.0)  {
+		if(GetStatus() == "RETURNING"){
+			return isCollisionDetected;
+		}
+		else if(collisionAngle <= 0.0)  {
 			//argos::LOG << collisionAngle << std::endl << collisionVector << std::endl << std::endl;
 			// argos::LOG << collisionAngle  << std::endl;
 			SetLeftTurn(collisionAngle); //qilu 09/24/2016
@@ -569,11 +572,29 @@ void CPFA_controller::Returning() {
     argos::CVector2 current_direction = (LoopFunctions->NestPosition - current_position).Normalize();
     float angular_deviation = acos(optimal_direction.DotProduct(current_direction));
 	
+	// Calculate collisions
+	int collision_occurred = (CollisionDetection() ? 1 : 0);
+
+	// Handle window
+	if (collision_history.size() >= window_size) {
+		int last_value = collision_history.front();
+		collision_history.pop_front();  // Remove oldest
+		recent_collision_sum -= last_value; // Subtract oldest value from sum
+	}
+
+	// Add new collision
+	collision_history.push_back(collision_occurred);
+	recent_collision_sum += collision_occurred;
+
+	// Calculate rate
+	float recent_collision_rate = static_cast<float>(recent_collision_sum) / window_size;
+
+
     // Package local actor state for RL
     ActorState local_state;
     local_state.distance_to_nest = distance_to_nest;
     local_state.timesteps_returning = timesteps_returning;
-    local_state.collisions = collisions_in_returning;
+	local_state.collisions = recent_collision_rate;	
     local_state.path_efficiency = path_efficiency;
     local_state.angular_deviation = angular_deviation;
     
@@ -589,8 +610,10 @@ void CPFA_controller::Returning() {
     // // Normalize state values
     // local_state.distance_to_nest /= LoopFunctions->GetMaxDistance();
     
-    // Share state with RL framework
-    UpdateRLState(local_state);
+    // Share state with RL framework only if not executing an action
+	if (actionRepeatCounter == 0) {
+		UpdateRLState(local_state);
+	}
     
 	if(!moving_to_target){
 		// Check if we've reached the nest
@@ -677,13 +700,13 @@ void CPFA_controller::Returning() {
         // SetRightTurn(robotActions[0]);
 		CRadians turn_angle(ToRadians(CDegrees(robotActions[0])));
 		CRadians new_heading = GetHeading() + turn_angle;
-		CVector2 move_vector(0.3, new_heading);  // 0.3 units forward
+		CVector2 move_vector(0.3, new_heading);  // 0.3 units forward -- this could possibly also be an action?
 		SetIsHeadingToNest(false);
 		SetTarget(GetPosition() + move_vector);
 		moving_to_target = true;
 		SetRightTurn(robotActions[0]);
         useDirectWheelControl = true;
-        actionRepeatCounter = 200;  // Repeat this action for 100 ticks
+        actionRepeatCounter = 200;  // Repeat this action for x ticks so it could finish executing
     }	
 }
 
