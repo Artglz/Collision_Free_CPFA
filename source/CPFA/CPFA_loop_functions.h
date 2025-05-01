@@ -91,7 +91,7 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		struct CriticState {
 			float nest_congestion_index; // Robots near nest / total robots
 			float mean_path_efficiency;  // Normalized efficiency across robots
-			int total_collisions; // Total collisions across all robots
+			float total_collisions; // Total collisions across all robots
 		};
 		unsigned int getNumberOfRobots();
         void increaseNumDistributedFoodByOne();

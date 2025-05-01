@@ -532,92 +532,12 @@ void CPFA_controller::Surveying() {
 
 void CPFA_controller::Returning() {
 
-	if (IsAtTarget()) {
-		//make it return to the nest
-		argos::LOG << "REACHED TURNING TARGET" << std::endl;
-		SetIsHeadingToNest(true);
-		SetTarget(LoopFunctions->NestPosition);
-	}
-
-    // Track return state variables for RL
-    if (first_time_returning) {
-        // Set up initial values when first entering return state
-        first_time_returning = false;
-        resource_pickup_position = GetPosition();
-        // optimal_distance_to_nest = (GetPosition() - LoopFunctions->NestPosition).Length();
-		optimal_distance_to_nest = 0;
-        timesteps_returning = 0;
-        total_returning_path_length = 0.0f;
-    }
-    
-    // Update RL state variables
-    timesteps_returning++;
-    
-    // Calculate current distance to nest
-    argos::CVector2 current_position = GetPosition();
-    float distance_to_nest = (current_position - LoopFunctions->NestPosition).Length();
-    
-
-	optimal_distance_to_nest = (resource_pickup_position - GetPosition()).Length();
-    // Update path efficiency calculation
-    float step_distance = (last_position - current_position).Length();
-    total_returning_path_length += step_distance;
-    last_position = current_position;
-    
-    // Calculate path efficiency (optimal/actual)
-    path_efficiency = optimal_distance_to_nest / total_returning_path_length;
-
-    // Calculate angular deviation
-    argos::CVector2 optimal_direction = (LoopFunctions->NestPosition - resource_pickup_position).Normalize();
-    argos::CVector2 current_direction = (LoopFunctions->NestPosition - current_position).Normalize();
-    float angular_deviation = acos(optimal_direction.DotProduct(current_direction));
-	
-	// Calculate collisions
-	int collision_occurred = (CollisionDetection() ? 1 : 0);
-
-	// Handle window
-	if (collision_history.size() >= window_size) {
-		int last_value = collision_history.front();
-		collision_history.pop_front();  // Remove oldest
-		recent_collision_sum -= last_value; // Subtract oldest value from sum
-	}
-
-	// Add new collision
-	collision_history.push_back(collision_occurred);
-	recent_collision_sum += collision_occurred;
-
-	// Calculate rate
-	float recent_collision_rate = static_cast<float>(recent_collision_sum) / window_size;
 
 
-    // Package local actor state for RL
-    ActorState local_state;
-    local_state.distance_to_nest = distance_to_nest;
-    local_state.timesteps_returning = timesteps_returning;
-	local_state.collisions = recent_collision_rate;	
-    local_state.path_efficiency = path_efficiency;
-    local_state.angular_deviation = angular_deviation;
-    
-	// log state values for each robot
-	// argos::LOG << "Robot ID: " << GetId() << std::endl;
-	// argos::LOG << "Distance to Nest: " << local_state.distance_to_nest << std::endl;
-	// argos::LOG << "Timesteps Spent Returning: " << local_state.timesteps_returning << std::endl;
-	// argos::LOG << "Collisions: " << local_state.collisions << std::endl;
-	// argos::LOG << "Path Efficiency: " << local_state.path_efficiency << std::endl;
-	// argos::LOG << "Angular Deviation: " << local_state.angular_deviation << std::endl;
-	// argos::LOG << "----------------------------------------" << std::endl;
-
-    // // Normalize state values
-    // local_state.distance_to_nest /= LoopFunctions->GetMaxDistance();
-    
-    // Share state with RL framework only if not executing an action
-	if (actionRepeatCounter == 0) {
-		UpdateRLState(local_state);
-	}
-    
-	if(!moving_to_target){
+	// if(!moving_to_target){
 		// Check if we've reached the nest
 		if (IsInTheNest()) {
+			reached_nest = true;
 			// Reset return-specific variables
 			first_time_returning = true;
 			timesteps_returning = 0;
@@ -671,31 +591,117 @@ void CPFA_controller::Returning() {
 			travelingTime += SimulationTick() - startTime;
 			startTime = SimulationTick();
 			useDirectWheelControl = false;
-		} else {
-			// Navigation logic when not at nest
-			if (IsAtTarget()) {
-				// Random search for nest
-				argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
-				argos::Real rand = RNG->Gaussian(USCV);
-				
-				argos::CRadians rotation(rand);
-				argos::CRadians angle1(rotation);
-				argos::CRadians angle2(GetHeading());
-				argos::CRadians turn_angle(angle1 + angle2);
-				argos::CVector2 turn_vector(SearchStepSize, turn_angle);
-				SetIsHeadingToNest(false);
-				SetTarget(turn_vector + GetPosition());
-			}
 		}
+		// } else {
+		// 	// Navigation logic when not at nest
+		// 	if (IsAtTarget()) {
+		// 		// Random search for nest
+		// 		argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
+		// 		argos::Real rand = RNG->Gaussian(USCV);
+				
+		// 		argos::CRadians rotation(rand);
+		// 		argos::CRadians angle1(rotation);
+		// 		argos::CRadians angle2(GetHeading());
+		// 		argos::CRadians turn_angle(angle1 + angle2);
+		// 		argos::CVector2 turn_vector(SearchStepSize, turn_angle);
+		// 		SetIsHeadingToNest(false);
+		// 		SetTarget(turn_vector + GetPosition());
+		// 	}
+		// }
+	// }
+
+	if (IsAtTarget()) {
+		//make it return to the nest
+		//argos::LOG << "REACHED TURNING TARGET" << std::endl;
+		SetIsHeadingToNest(true);
+		SetTarget(LoopFunctions->NestPosition);
 	}
+
+    // Track return state variables for RL
+    if (first_time_returning) {
+        // Set up initial values when first entering return state
+        first_time_returning = false;
+        resource_pickup_position = GetPosition();
+        // optimal_distance_to_nest = (GetPosition() - LoopFunctions->NestPosition).Length();
+		optimal_distance_to_nest = 0;
+        timesteps_returning = 0;
+        total_returning_path_length = 0.0f;
+    }
+    
+    // Update RL state variables
+    timesteps_returning++;
+    
+    // Calculate current distance to nest
+    argos::CVector2 current_position = GetPosition();
+    float distance_to_nest = (current_position - LoopFunctions->NestPosition).Length();
+    
+
+	optimal_distance_to_nest = (resource_pickup_position - GetPosition()).Length();
+    // Update path efficiency calculation
+    float step_distance = (last_position - current_position).Length();
+    total_returning_path_length += step_distance;
+    last_position = current_position;
+    
+    // Calculate path efficiency (optimal/actual)
+    path_efficiency = optimal_distance_to_nest / total_returning_path_length;
+
+    // Calculate angular deviation
+	CRadians heading_to_nest = (LoopFunctions->NestPosition - GetPosition()).Angle();
+	CRadians heading_error = (GetHeading() - heading_to_nest).SignedNormalize();
+	float angular_deviation = std::fabs(heading_error.GetValue());
+	
+	// Calculate collisions
+	int collision_occurred = (CollisionDetection() ? 1 : 0);
+
+	// Handle window
+	if (collision_history.size() >= window_size) {
+		int last_value = collision_history.front();
+		collision_history.pop_front();  // Remove oldest
+		recent_collision_sum -= last_value; // Subtract oldest value from sum
+	}
+
+	// Add new collision
+	collision_history.push_back(collision_occurred);
+	recent_collision_sum += collision_occurred;
+
+	// Calculate rate
+	float recent_collision_rate = static_cast<float>(recent_collision_sum) / window_size;
+
+
+    // Package local actor state for RL
+    ActorState local_state;
+    local_state.distance_to_nest = distance_to_nest;
+    local_state.timesteps_returning = timesteps_returning;
+	local_state.collisions = recent_collision_rate;	
+    local_state.path_efficiency = path_efficiency;
+    local_state.angular_deviation = angular_deviation;
+	local_state.reached_nest = (IsInTheNest() ? 1.0f : 0.0f);
+	
+    
+	// log state values for each robot
+	// argos::LOG << "Robot ID: " << GetId() << std::endl;
+	// argos::LOG << "Distance to Nest: " << local_state.distance_to_nest << std::endl;
+	// argos::LOG << "Timesteps Spent Returning: " << local_state.timesteps_returning << std::endl;
+	// argos::LOG << "Collisions: " << local_state.collisions << std::endl;
+	// argos::LOG << "Path Efficiency: " << local_state.path_efficiency << std::endl;
+	// argos::LOG << "Angular Deviation: " << local_state.angular_deviation << std::endl;
+	// argos::LOG << "----------------------------------------" << std::endl;
+
+    // // Normalize state values
+    // local_state.distance_to_nest /= LoopFunctions->GetMaxDistance();
+    
+    // Share state with RL framework only if not executing an action
+	
+    UpdateRLState(local_state);
+
     if (actionRepeatCounter > 0) {
         actionRepeatCounter--;
         return;  // Still executing the previous action
     }
 
     if (robotActions.size() >= 2) {
-        argos::LOG << "Robot " << GetId() << ": " << robotActions[0]
-                   << ", " << robotActions[1] << " at " << SimulationTick() << std::endl;
+        argos::LOG << "Robot " << GetId() << " is turning to degree " << robotActions[0]
+                   << ", and changing speed to " << robotActions[1] << " at " << SimulationTick() << std::endl;
 
         // SetRightTurn(robotActions[0]);
 		CRadians turn_angle(ToRadians(CDegrees(robotActions[0])));
@@ -706,7 +712,7 @@ void CPFA_controller::Returning() {
 		moving_to_target = true;
 		SetRightTurn(robotActions[0]);
         useDirectWheelControl = true;
-        actionRepeatCounter = 200;  // Repeat this action for x ticks so it could finish executing
+        actionRepeatCounter = 100;  // Repeat this action for x ticks so it could finish executing
     }	
 }
 

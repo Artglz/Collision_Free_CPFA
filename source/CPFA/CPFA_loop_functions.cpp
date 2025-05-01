@@ -224,29 +224,33 @@ void CPFA_loop_functions::PostStep() {
 		const auto& st = kv.second;
 		sum_efficiency += st.path_efficiency;
 		sum_collisions += static_cast<float>(st.collisions);
-		if (st.distance_to_nest <= 0.05f) {
-		++near_nest_count;
+		if (st.distance_to_nest <= 1.00f) {
+			++near_nest_count;
 		}
 	}
 
+	//check if a robot is within
+
 	CriticState cstate;
-	if (N > 0) {
+	// if (N > 0) {
 		cstate.mean_path_efficiency   = sum_efficiency / static_cast<float>(m_localStates.size());
 		cstate.nest_congestion_index  = static_cast<float>(near_nest_count) / static_cast<float>(N);
-		cstate.total_collisions  = sum_collisions / static_cast<float>(m_localStates.size());
-	} else {
-		cstate.mean_path_efficiency   = 0.0f;
-		cstate.nest_congestion_index  = 0.0f;
-		cstate.total_collisions  = 0.0f;
-	}
+		cstate.total_collisions  = sum_collisions / m_localStates.size();
+	// } else {
+	// 	cstate.mean_path_efficiency   = 0.0f;
+	// 	cstate.nest_congestion_index  = 0.0f;
+	// 	cstate.total_collisions  = 0.0f;
+	// }
 
 	//log m_localStates
 	// for(auto it = m_localStates.begin(); it != m_localStates.end(); ++it) {
 	// 	argos::LOG << "robot["<< it->first <<"]="<< it->second.distance_to_nest << ", "<< it->second.timesteps_returning << ", "<< it->second.collisions << ", "<< it->second.path_efficiency << ", "<< it->second.angular_deviation << endl;
 	// }
 
+	//log cstate
+	//argos::LOG << "cstate="<< cstate.mean_path_efficiency << ", "<< cstate.nest_congestion_index << ", "<< cstate.total_collisions << endl;
 
-	m_mapRobotActions = CallPythonTrainStep(m_localStates, cstate);
+	// m_mapRobotActions = CallPythonTrainStep(m_localStates, cstate);
 	
 	// CallPythonTrainStep(m_localStates, cstate);
 	//log m_mapRobotActions
@@ -402,7 +406,7 @@ void CPFA_loop_functions::PostExperiment() {
     //   }  
 
 
-	// CallPythonSaveModels();
+	CallPythonSaveModels();
 }
 
 
@@ -827,12 +831,13 @@ std::map<std::string, std::vector<float>> CPFA_loop_functions::CallPythonTrainSt
     // Build the actor_states Python dictionary
     PyObject* pActorDict = PyDict_New();
     for (auto const& [robot_id, st] : actorStates) {
-        PyObject* pList = PyList_New(5);
+        PyObject* pList = PyList_New(6);
         PyList_SetItem(pList, 0, PyFloat_FromDouble(st.distance_to_nest));
         PyList_SetItem(pList, 1, PyLong_FromLong(st.timesteps_returning));
         PyList_SetItem(pList, 2, PyLong_FromLong(st.collisions));
         PyList_SetItem(pList, 3, PyFloat_FromDouble(st.path_efficiency));
         PyList_SetItem(pList, 4, PyFloat_FromDouble(st.angular_deviation));
+		PyList_SetItem(pList, 5, PyFloat_FromDouble(st.reached_nest));
         PyDict_SetItem(pActorDict, PyUnicode_FromString(robot_id.c_str()), pList);
         Py_DECREF(pList);
     }

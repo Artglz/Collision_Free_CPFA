@@ -70,6 +70,7 @@ class CPFA_controller : public BaseController {
 			int collisions;
 			float path_efficiency;      // optimal/actual
 			float angular_deviation;    // angle between optimal and current direction
+			int reached_nest; // 1 if reached nest, 0 otherwise
 		};
 		// std::vector<float> robotActions;
 		int actionRepeatCounter = 0;           // how many steps to keep current action
@@ -77,6 +78,7 @@ class CPFA_controller : public BaseController {
 		int window_size = 10; // size of the history window for collisions
 		float recent_collision_sum = 0; // sum of recent collisions
 		bool moving_to_target = false;
+		bool reached_nest = false;
 	private:
   string 			controllerID;//qilu 07/26/2016
 		CCI_DifferentialSteeringActuator* m_pcWheels; //defining wheels

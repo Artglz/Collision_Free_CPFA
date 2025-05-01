@@ -17,6 +17,7 @@ from torch.distributions import Normal
 from collections import deque
 import json
 import time
+from torch.utils.tensorboard import SummaryWriter
 
 
 # Device configuration
@@ -64,10 +65,12 @@ class Actor(nn.Module):
         else:
             dist = Normal(mean, std)
             action = dist.sample()
+            action[..., 0] = torch.clamp(action[..., 0], -180.0, 180.0)
+            action[..., 1] = torch.clamp(action[..., 1], 2.0, 32.0) 
+        
             return action
+        
 
-        action[..., 0] = torch.clamp(action[..., 0], -180.0, 180.0)
-        action[..., 1] = torch.clamp(action[..., 1], 2.0, 32.0) 
 
         return action
     
@@ -101,7 +104,7 @@ class Memory:
         self.log_probs = []
         self.dones = []
         self.global_states = []
-        self.robot_ids = []
+        # self.robot_ids = []
     
     def add(self, state, action, reward, next_state, log_prob, done, global_state, robot_id):
         self.states.append(state)
@@ -111,7 +114,7 @@ class Memory:
         self.log_probs.append(log_prob)
         self.dones.append(done)
         self.global_states.append(global_state)
-        self.robot_ids.append(robot_id)
+        # self.robot_ids.append(robot_id)
     
     def clear(self):
         self.states.clear()
@@ -121,7 +124,7 @@ class Memory:
         self.log_probs.clear()
         self.dones.clear()
         self.global_states.clear()
-        self.robot_ids.clear()
+        # self.robot_ids.clear()
     
     def __len__(self):
         return len(self.states)
@@ -129,16 +132,20 @@ class Memory:
 class RLTrainer:
     def __init__(self):
         # State dimensions
-        self.actor_state_dim = 5  # distance_to_nest, timesteps_returning, collisions, path_efficiency, angular_deviation
+        self.actor_state_dim = 6  # distance_to_nest, timesteps_returning, collisions, path_efficiency, angular_deviation
         self.global_state_dim = 3  # nest_congestion_index, mean_path_efficiency, total_collisions
         self.action_dim = 2  # Steering angle and speed adjustments
-        
+        self.tb_writer = SummaryWriter(log_dir=LOG_DIR)
+
         # Initialize memory buffer
         self.memory = Memory()
         
         # Initialize actor and critic networks
-        self.actors = {}  # Maps robot_id to an actor network
-        self.actor_optimizers = {}
+        # self.actors = {}  # Maps robot_id to an actor network
+        # self.actor_optimizers = {}
+        # self.actor = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
+        self.actor = Actor(self.actor_state_dim, self.action_dim).to(device)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=ACTOR_LR)
         self.critic = Critic(self.actor_state_dim + self.global_state_dim).to(device)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=CRITIC_LR)
         
@@ -156,13 +163,15 @@ class RLTrainer:
         self.log_file = os.path.join(LOG_DIR, f"training_log_{int(time.time())}.json")
         self.log_data = []
     
-    def get_actor(self, robot_id):
-        """Get or create an actor for the specified robot"""
-        if robot_id not in self.actors:
-            self.actors[robot_id] = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
-            self.actor_optimizers[robot_id] = optim.Adam(self.actors[robot_id].parameters(), lr=ACTOR_LR)
-        return self.actors[robot_id]
-    
+    # def get_actor(self, robot_id):
+    #     """Get or create an actor for the specified robot"""
+    #     if robot_id not in self.actors:
+    #         self.actors[robot_id] = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
+    #         self.actor_optimizers[robot_id] = optim.Adam(self.actors[robot_id].parameters(), lr=ACTOR_LR)
+    #     return self.actors[robot_id]
+    def get_actor(self):
+        return self.actor
+
     def calc_returns(self, rewards, dones, values):
         """Calculate returns with Generalized Advantage Estimation (GAE)"""
         returns = []
@@ -194,56 +203,44 @@ class RLTrainer:
         next_states = torch.FloatTensor(np.array(self.memory.next_states)).to(device)
         old_log_probs = torch.FloatTensor(np.array(self.memory.log_probs)).to(device)
         dones = torch.FloatTensor(np.array(self.memory.dones)).to(device)
-        global_states = torch.FloatTensor(np.array(self.memory.global_states)).to(device)
-        robot_ids = self.memory.robot_ids
         
         # Calculate values and returns
         values = self.critic(states).detach()
         returns, advantages = self.calc_returns(rewards, dones, values)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         
-        # Group training data by robot_id
-        robot_data = {}
-        for i, robot_id in enumerate(robot_ids):
-            if robot_id not in robot_data:
-                robot_data[robot_id] = {'indices': []}
-            robot_data[robot_id]['indices'].append(i)
+        # # Group training data by robot_id
+        # robot_data = {}
+        # for i, robot_id in enumerate(robot_ids):
+        #     if robot_id not in robot_data:
+        #         robot_data[robot_id] = {'indices': []}
+        #     robot_data[robot_id]['indices'].append(i)
         
         # Train for several epochs
         for _ in range(PPO_EPOCHS):
-            # First, update the critic (centralized)
+            # Update the centralized critic
             value_pred = self.critic(states)
             value_loss = F.mse_loss(value_pred, returns.unsqueeze(1))
-            
+            self.tb_writer.add_scalar('Loss/Critic', value_loss.item(), self.step_count)
+
             self.critic_optimizer.zero_grad()
             value_loss.backward()
             nn.utils.clip_grad_norm_(self.critic.parameters(), MAX_GRAD_NORM)
             self.critic_optimizer.step()
-            
-            # Then, update each actor (decentralized but with access to global state)
-            for robot_id, data in robot_data.items():
-                indices = data['indices']
-                if len(indices) == 0:
-                    continue
-                
-                robot_states = states[indices]
-                robot_actions = actions[indices]
-                robot_advantages = advantages[indices]
-                robot_old_log_probs = old_log_probs[indices]
-                
-                actor = self.get_actor(robot_id)
-                new_log_probs, entropy = actor.evaluate(robot_states, robot_actions)
-                
-                # PPO clipped objective
-                ratio = torch.exp(new_log_probs - robot_old_log_probs)
-                surr1 = ratio * robot_advantages
-                surr2 = torch.clamp(ratio, 1.0 - PPO_EPSILON, 1.0 + PPO_EPSILON) * robot_advantages
-                actor_loss = -torch.min(surr1, surr2).mean() - ENTROPY_COEF * entropy.mean()
-                
-                self.actor_optimizers[robot_id].zero_grad()
-                actor_loss.backward()
-                nn.utils.clip_grad_norm_(actor.parameters(), MAX_GRAD_NORM)
-                self.actor_optimizers[robot_id].step()
+
+            # Update the shared actor (decentralized execution)
+            new_log_probs, entropy = self.actor.evaluate(states, actions)
+            ratio = torch.exp(new_log_probs - old_log_probs)
+            surr1 = ratio * advantages
+            surr2 = torch.clamp(ratio, 1.0 - PPO_EPSILON, 1.0 + PPO_EPSILON) * advantages
+            actor_loss = -torch.min(surr1, surr2).mean() - ENTROPY_COEF * entropy.mean()
+
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            nn.utils.clip_grad_norm_(self.actor.parameters(), MAX_GRAD_NORM)
+            self.actor_optimizer.step()
+
+            self.tb_writer.add_scalar('Loss/Actor', actor_loss.item(), self.step_count)
         
         # Clear memory after update
         self.memory.clear()
@@ -261,25 +258,27 @@ class RLTrainer:
         path_efficiency = curr_state[3]  # Reward for efficient path
         angular_deviation = curr_state[4]  # Penalty for deviating from optimal path
         nest_congestion = global_state[0]  # Penalty for approaching congested nest
-        
+        reached_nest = curr_state[5] # Check if robot reached the nest
         # Reward components
         reward_distance = 2.0 * distance_change  # Positive reward for approaching nest
-        reward_collision = -5.0 if collisions_occurred else 0.0  # Collision penalty
+        reward_collision = -5.0 * curr_state[2]  # Collision penalty
         reward_efficiency = 1.0 * path_efficiency  # Efficiency bonus
-        reward_deviation = -0.5 * angular_deviation  # Deviation penalty
+        reward_deviation = -0.75 * angular_deviation  # Deviation penalty
         reward_congestion = -1.0 * nest_congestion * max(0, 1.0 - curr_state[0])  # Congestion penalty (increases as robot gets closer to nest)
+        reward_reach_nest = 20.0 if reached_nest >= 0.5 else 0.0
         
         # Total reward
-        reward = reward_distance + reward_collision + reward_efficiency + reward_deviation + reward_congestion
+        reward = reward_distance + reward_collision + reward_efficiency + reward_deviation + reward_congestion + reward_reach_nest
         
         return reward
     
     def get_action(self, robot_id, state, global_state, training=True):
         """Get action for a robot based on its current state"""
-        combined_state = np.concatenate([state, global_state])
-        state_tensor = torch.FloatTensor(combined_state).unsqueeze(0).to(device)
+        # combined_state = np.concatenate([state, global_state])
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
         
-        actor = self.get_actor(robot_id)
+        # actor = self.get_actor(robot_id)
+        actor = self.get_actor()
         with torch.no_grad():
             if training:
                 action = actor.get_action(state_tensor, deterministic=False)
@@ -287,10 +286,6 @@ class RLTrainer:
             else:
                 action = actor.get_action(state_tensor, deterministic=True)
                 log_prob = torch.zeros(1)
-
-        # Clamp final action before returning
-        action[..., 0] = torch.clamp(action[..., 0], -180.0, 180.0)  # Angle
-        action[..., 1] = torch.clamp(action[..., 1],  2.0, 32.0)        # Speed
 
         return action.squeeze().cpu().numpy(), log_prob.item()
     
@@ -322,7 +317,8 @@ class RLTrainer:
                 state[1],  # timesteps_returning
                 state[2],  # collisions
                 state[3],  # path_efficiency
-                state[4]   # angular_deviation
+                state[4],   # angular_deviation
+                state[5]   # reached_nest
             ])
             
             # Store the state
@@ -345,7 +341,7 @@ class RLTrainer:
                 actions[robot_id] = action
                 
                 # Determine if this is a terminal state (reached nest)
-                done = robot_state[0] < 0.1  # Distance to nest is very small
+                done = robot_state[5] == 1  # Distance to nest is very small
                 
                 # Store experience in memory
                 combined_state = np.concatenate([prev_state, global_state_array])
@@ -382,9 +378,15 @@ class RLTrainer:
                     'avg_efficiency': avg_efficiency,
                     'avg_collisions': avg_collisions,
                     'nest_congestion': global_state_array[0],
+                    'mean_path_efficiency': global_state_array[1],
                     'total_collisions': global_state_array[2]
                 })
-                
+                self.tb_writer.add_scalar('Reward/Avg', np.mean(self.rewards_history), self.step_count)
+                self.tb_writer.add_scalar('Efficiency/Avg', avg_efficiency, self.step_count)
+                self.tb_writer.add_scalar('Collisions/Avg', avg_collisions, self.step_count)
+                self.tb_writer.add_scalar('Global/NestCongestion', global_state_array[0], self.step_count)
+                self.tb_writer.add_scalar('Global/MeanPathEfficiency', global_state_array[1], self.step_count)
+                self.tb_writer.add_scalar('Global/TotalCollisions', global_state_array[2], self.step_count)                
                 # print(f"Step {self.step_count}, Avg Reward: {np.mean(self.rewards_history):.3f}, "
                 #       f"Efficiency: {avg_efficiency:.3f}, Collisions: {avg_collisions:.2f}")
         
@@ -395,20 +397,22 @@ class RLTrainer:
     def save_models(self):
         """Save all models to disk"""
         # Save actors
-        for robot_id, actor in self.actors.items():
-            torch.save(actor.state_dict(), os.path.join(MODEL_DIR, f"actor_{robot_id}.pt"))
-        
+        # for robot_id, actor in self.actors.items():
+        #     torch.save(actor.state_dict(), os.path.join(MODEL_DIR, f"actor_{robot_id}.pt"))
+        torch.save(self.actor.state_dict(), os.path.join(MODEL_DIR, "actor_shared.pt"))
         # Save critic
         torch.save(self.critic.state_dict(), os.path.join(MODEL_DIR, "critic.pt"))
-        
+        self.episode += 1 # Increment episode count after simulation ends
         # Save training state
         training_state = {
             'episode': self.episode,
             'step_count': self.step_count,
-            'robot_ids': list(self.actors.keys())
         }
         with open(os.path.join(MODEL_DIR, "training_state.json"), 'w') as f:
             json.dump(training_state, f)
+
+        self.tb_writer.close()
+
     
     def load_models(self):
         """Load models from disk if they exist"""
@@ -421,14 +425,17 @@ class RLTrainer:
                 self.step_count = training_state.get('step_count', 0)
                 
                 # Load actors for known robots
-                for robot_id in training_state.get('robot_ids', []):
-                    actor_path = os.path.join(MODEL_DIR, f"actor_{robot_id}.pt")
-                    if os.path.exists(actor_path):
-                        actor = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
-                        actor.load_state_dict(torch.load(actor_path))
-                        self.actors[robot_id] = actor
-                        self.actor_optimizers[robot_id] = optim.Adam(actor.parameters(), lr=ACTOR_LR)
-            
+                # for robot_id in training_state.get('robot_ids', []):
+                #     actor_path = os.path.join(MODEL_DIR, f"actor_{robot_id}.pt")
+                #     if os.path.exists(actor_path):
+                #         actor = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
+                #         actor.load_state_dict(torch.load(actor_path))
+                #         self.actors[robot_id] = actor
+                #         self.actor_optimizers[robot_id] = optim.Adam(actor.parameters(), lr=ACTOR_LR)
+                actor_path = os.path.join(MODEL_DIR, "actor_shared.pt")
+                if os.path.exists(actor_path):
+                    self.actor.load_state_dict(torch.load(actor_path))
+
             # Load critic
             critic_path = os.path.join(MODEL_DIR, "critic.pt")
             if os.path.exists(critic_path):
