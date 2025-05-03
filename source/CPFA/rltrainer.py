@@ -1,13 +1,5 @@
-# rltrainer.py
-# import numpy as np
-# def train_step(actor_states, global_state):
-#     print("\n[Python] train_step called!")
-#     print(f"Actor states received: {len(actor_states)} robots")
-#     for robot_id, state in actor_states.items():
-#         print(f"Robot {robot_id}: {state}")
-#     print(f"Global state received: {global_state}")
-#     return True
 import os
+import time
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,487 +7,519 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Normal
 from collections import deque
-import json
-import time
+import pickle
+import random
+import threading
 from torch.utils.tensorboard import SummaryWriter
 
-
-# Device configuration
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Paths for saving models and logs
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
-LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
-os.makedirs(MODEL_DIR, exist_ok=True)
-os.makedirs(LOG_DIR, exist_ok=True)
-
-# Hyperparameters
+# Constants
 ACTOR_LR = 3e-4
 CRITIC_LR = 3e-4
 GAMMA = 0.99
-GAE_LAMBDA = 0.95
-PPO_EPSILON = 0.2
-PPO_EPOCHS = 10
-BATCH_SIZE = 64
+LAMBDA = 0.95
+EPSILON = 0.2  # PPO clipping parameter
 ENTROPY_COEF = 0.01
 VALUE_COEF = 0.5
-MAX_GRAD_NORM = 0.5
-MEMORY_SIZE = 10000  # Size of replay buffer
+MAX_BUFFER_SIZE = 10000
+BATCH_SIZE = 64
+UPDATE_EVERY = 100  # Update policy after collecting this many samples
+CHECKPOINT_DIR = "source/CPFA/models"
+LOG_EVERY = 10  # Log stats every N episodes
 
-# Neural network architectures
-class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim):
-        super(Actor, self).__init__()
-        self.fc1 = nn.Linear(state_dim, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.mean = nn.Linear(64, action_dim)
-        self.log_std = nn.Parameter(torch.zeros(action_dim))
+# Ensure checkpoint directory exists
+os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
+# Create log file
+log_file = open(f"{CHECKPOINT_DIR}/training_log.txt", "a")
+
+def log(message):
+    """Write message to log file and print to console"""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    formatted_message = f"[{timestamp}] {message}"
+    print(formatted_message)
+    log_file.write(formatted_message + "\n")
+    log_file.flush()
+
+# Neural Network Models
+class ActorNetwork(nn.Module):
+    def __init__(self, input_dim=6, hidden_dim=128, action_dim=2):
+        super(ActorNetwork, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        
+        # Mean and log_std for continuous actions
+        self.mean_head = nn.Linear(hidden_dim, action_dim)
+        self.log_std_head = nn.Linear(hidden_dim, action_dim)
+        
+        # Initialize weights
+        nn.init.orthogonal_(self.fc1.weight, gain=np.sqrt(2))
+        nn.init.orthogonal_(self.fc2.weight, gain=np.sqrt(2))
+        nn.init.orthogonal_(self.mean_head.weight, gain=0.01)
+        nn.init.orthogonal_(self.log_std_head.weight, gain=0.01)
+        
+        # Action bounds (degree(-180 to 180) and speed(2 to 32))
+        self.action_bounds = torch.tensor([[-180.0, 2.0], [180.0, 32.0]], dtype=torch.float32)
         
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        mean = self.mean(x)
-        std = torch.exp(self.log_std.clamp(-20, 2))
-        return mean, std
+        
+        # mean = self.mean_head(x)
+        mean = torch.tanh(self.mean_head(x))  # <== constrain to [-1, 1]
+        log_std = self.log_std_head(x)
+        log_std = torch.clamp(log_std, -20, 2)  # Prevent too small/large std
+        
+        return mean, log_std
     
     def get_action(self, state, deterministic=False):
-        mean, std = self(state)
+        mean, log_std = self.forward(state)
+        
         if deterministic:
-            return mean
+            # For deterministic action, just use the mean
+            action = mean
         else:
+            # Sample from Gaussian distribution
+            std = log_std.exp()
             dist = Normal(mean, std)
             action = dist.sample()
-            action[..., 0] = torch.clamp(action[..., 0], -180.0, 180.0)
-            action[..., 1] = torch.clamp(action[..., 1], 2.0, 32.0) 
+            action = torch.clamp(action, -1.0, 1.0)
         
-            return action
+        # Scale actions to the proper range
+        scaled_action = self.scale_action(action)
         
-
-
-        return action
+        return scaled_action, mean, log_std
     
-    def evaluate(self, state, action):
-        mean, std = self(state)
-        dist = Normal(mean, std)
-        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
-        entropy = dist.entropy().sum(dim=-1, keepdim=True)
-        return log_prob, entropy
-
-class Critic(nn.Module):
-    def __init__(self, state_dim):
-        super(Critic, self).__init__()
-        self.fc1 = nn.Linear(state_dim, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.value = nn.Linear(64, 1)
+    def evaluate_action(self, state, action):
+        """Calculate log probability and entropy for given state-action pair"""
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
         
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        value = self.value(x)
+        # Unscale action from environment range to network range
+        action = self.unscale_action(action)
+        
+        dist = Normal(mean, std)
+        log_prob = dist.log_prob(action).sum(dim=-1)
+        entropy = dist.entropy().sum(dim=-1)
+        
+        return log_prob, entropy
+    
+    def scale_action(self, action):
+        """Scale action from network output to environment range"""
+        # Convert to numpy for easier handling
+        if isinstance(action, torch.Tensor):
+            action = action.detach().cpu().numpy()
+            
+        # Scale each dimension independently
+        scaled_action = np.zeros_like(action)
+        
+        # Degree: Transform from [-1, 1] to [-180, 180]
+        scaled_action[..., 0] = np.clip(action[..., 0], -1, 1) * 180.0
+        
+        # Speed: Transform from [-1, 1] to [2, 32]
+        scaled_action[..., 1] = (np.clip(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 2.0) + 2.0
+        
+        return scaled_action
+    
+    def unscale_action(self, action):
+        """Unscale action from environment range to network range (approximately [-1, 1])"""
+        # Convert to torch if numpy
+        if isinstance(action, np.ndarray):
+            action = torch.FloatTensor(action)
+            
+        unscaled = torch.zeros_like(action)
+        
+        # Degree: Transform from [-180, 180] to [-1, 1]
+        unscaled[..., 0] = torch.clamp(action[..., 0] / 180.0, -1, 1)
+        
+        # Speed: Transform from [2, 32] to [-1, 1]
+        unscaled[..., 1] = (torch.clamp(action[..., 1], 2, 32) - 2.0) / (32.0 - 2.0) * 2 - 1
+        
+        return unscaled
+
+class CriticNetwork(nn.Module):
+    def __init__(self, input_dim=3, hidden_dim=128):
+        super(CriticNetwork, self).__init__()
+        # Global state input (nest_congestion, mean_efficiency, total_collisions)
+        self.global_fc1 = nn.Linear(input_dim, hidden_dim // 2)
+        
+        # Actor state input
+        self.actor_fc1 = nn.Linear(6, hidden_dim // 2)
+        
+        # Combined layers
+        self.combined_fc = nn.Linear(hidden_dim, hidden_dim)
+        self.value_head = nn.Linear(hidden_dim, 1)
+        
+        # Initialize weights
+        nn.init.orthogonal_(self.global_fc1.weight, gain=np.sqrt(2))
+        nn.init.orthogonal_(self.actor_fc1.weight, gain=np.sqrt(2))
+        nn.init.orthogonal_(self.combined_fc.weight, gain=np.sqrt(2))
+        nn.init.orthogonal_(self.value_head.weight, gain=1.0)
+        
+    def forward(self, global_state, actor_state):
+        # Process global state
+        g = F.relu(self.global_fc1(global_state))
+        
+        # Process actor state
+        a = F.relu(self.actor_fc1(actor_state))
+        
+        # Combine
+        combined = torch.cat([g, a], dim=1)
+        combined = F.relu(self.combined_fc(combined))
+        
+        # Output value
+        value = self.value_head(combined)
+        
         return value
 
-# Memory buffer for storing experiences
-class Memory:
+class PPOAgent:
     def __init__(self):
-        self.states = []
-        self.actions = []
-        self.rewards = []
-        self.next_states = []
-        self.log_probs = []
-        self.dones = []
-        self.global_states = []
-        # self.robot_ids = []
-    
-    def add(self, state, action, reward, next_state, log_prob, done, global_state, robot_id):
-        self.states.append(state)
-        self.actions.append(action)
-        self.rewards.append(reward)
-        self.next_states.append(next_state)
-        self.log_probs.append(log_prob)
-        self.dones.append(done)
-        self.global_states.append(global_state)
-        # self.robot_ids.append(robot_id)
-    
-    def clear(self):
-        self.states.clear()
-        self.actions.clear()
-        self.rewards.clear()
-        self.next_states.clear()
-        self.log_probs.clear()
-        self.dones.clear()
-        self.global_states.clear()
-        # self.robot_ids.clear()
-    
-    def __len__(self):
-        return len(self.states)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        log(f"Using device: {self.device}")
+        print(f"Looking for models in: {CHECKPOINT_DIR}")
 
-class RLTrainer:
-    def __init__(self):
-        # State dimensions
-        self.actor_state_dim = 6  # distance_to_nest, timesteps_returning, collisions, path_efficiency, angular_deviation
-        self.global_state_dim = 3  # nest_congestion_index, mean_path_efficiency, total_collisions
-        self.action_dim = 2  # Steering angle and speed adjustments
-        self.tb_writer = SummaryWriter(log_dir=LOG_DIR)
-
-        # Initialize memory buffer
-        self.memory = Memory()
+        # Initialize networks
+        self.actor = ActorNetwork().to(self.device)
+        self.critic = CriticNetwork().to(self.device)
         
-        # Initialize actor and critic networks
-        # self.actors = {}  # Maps robot_id to an actor network
-        # self.actor_optimizers = {}
-        # self.actor = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
-        self.actor = Actor(self.actor_state_dim, self.action_dim).to(device)
+        # Optimizers
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=ACTOR_LR)
-        self.critic = Critic(self.actor_state_dim + self.global_state_dim).to(device)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=CRITIC_LR)
         
-        # Tracking variables
-        self.episode = 0
-        self.step_count = 0
-        self.rewards_history = deque(maxlen=100)
-        self.collision_history = deque(maxlen=100)
-        self.efficiency_history = deque(maxlen=100)
+        # Experience buffer
+        self.reset_buffers()
+        self.writer = SummaryWriter(log_dir=os.path.join(CHECKPOINT_DIR, "tensorboard"))
+
+        # Training stats
+        self.stats = {
+            "steps": 0,
+            "updates": 0,
+            "mean_reward": 0,
+            "rewards": [],
+            "collision_rate": 0,
+            "path_efficiency": 0,
+            "nest_congestion": 0
+        }
         
-        # Load previous models if they exist
+        # Load model if exists
         self.load_models()
         
-        # Logger
-        self.log_file = os.path.join(LOG_DIR, f"training_log_{int(time.time())}.json")
-        self.log_data = []
+        # Lock for thread safety
+        self.lock = threading.Lock()
+        
+    def reset_buffers(self):
+        """Reset experience buffers"""
+        self.states = []
+        self.global_states = []
+        self.actions = []
+        self.rewards = []
+        self.values = []
+        self.log_probs = []
+        self.dones = []
+        self.timesteps = 0
+        
+    def store_experience(self, state, global_state, action, reward, value, log_prob, done):
+        """Store experience in buffer"""
+        with self.lock:
+            self.states.append(state)
+            self.global_states.append(global_state)
+            self.actions.append(action)
+            self.rewards.append(reward)
+            self.values.append(value)
+            self.log_probs.append(log_prob)
+            self.dones.append(done)
+            
+            self.timesteps += 1
+            self.stats["steps"] += 1
+            self.stats["rewards"].append(reward)
+            
+            # Keep buffer size in check
+            if len(self.states) > MAX_BUFFER_SIZE:
+                self.states.pop(0)
+                self.global_states.pop(0)
+                self.actions.pop(0)
+                self.rewards.pop(0)
+                self.values.pop(0)
+                self.log_probs.pop(0)
+                self.dones.pop(0)
     
-    # def get_actor(self, robot_id):
-    #     """Get or create an actor for the specified robot"""
-    #     if robot_id not in self.actors:
-    #         self.actors[robot_id] = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
-    #         self.actor_optimizers[robot_id] = optim.Adam(self.actors[robot_id].parameters(), lr=ACTOR_LR)
-    #     return self.actors[robot_id]
-    def get_actor(self):
-        return self.actor
-
-    def calc_returns(self, rewards, dones, values):
-        """Calculate returns with Generalized Advantage Estimation (GAE)"""
+    def compute_returns(self, next_value, gamma=GAMMA, lambda_=LAMBDA):
+        """Compute GAE (Generalized Advantage Estimation)"""
         returns = []
-        advantages = []
         gae = 0
         
-        for i in reversed(range(len(rewards))):
-            if i == len(rewards) - 1:
-                next_value = 0
-            else:
-                next_value = values[i + 1].item()
+        # Convert to numpy arrays for easier manipulation
+        rewards = np.array(self.rewards)
+        values = np.array(self.values + [next_value])
+        dones = np.array(self.dones + [0])
+        
+        # Work backwards to compute returns and GAE
+        for step in reversed(range(len(rewards))):
+            delta = rewards[step] + gamma * values[step + 1] * (1 - dones[step]) - values[step]
+            gae = delta + gamma * lambda_ * (1 - dones[step]) * gae
+            returns.insert(0, gae + values[step])
             
-            delta = rewards[i] + GAMMA * next_value * (1 - dones[i]) - values[i].item()
-            gae = delta + GAMMA * GAE_LAMBDA * (1 - dones[i]) * gae
-            returns.insert(0, gae + values[i].item())
-            advantages.insert(0, gae)
-        
-        return torch.tensor(returns, dtype=torch.float32).to(device), torch.tensor(advantages, dtype=torch.float32).to(device)
+        return returns
     
-    def update_policy(self):
-        """Update the policy using PPO algorithm"""
-        if len(self.memory) < BATCH_SIZE:
-            return  # Not enough samples for training
+    def update_policy(self, next_value=0):
+        """Update actor and critic networks using PPO"""
+        if len(self.states) < BATCH_SIZE:
+            return  # Not enough samples yet
+        
+        with self.lock:
+            # Compute returns
+            returns = self.compute_returns(next_value)
             
-        # Convert memory data to tensors
-        states = torch.FloatTensor(np.array(self.memory.states)).to(device)
-        actions = torch.FloatTensor(np.array(self.memory.actions)).to(device)
-        rewards = torch.FloatTensor(np.array(self.memory.rewards)).to(device)
-        next_states = torch.FloatTensor(np.array(self.memory.next_states)).to(device)
-        old_log_probs = torch.FloatTensor(np.array(self.memory.log_probs)).to(device)
-        dones = torch.FloatTensor(np.array(self.memory.dones)).to(device)
-        
-        # Calculate values and returns
-        values = self.critic(states).detach()
-        returns, advantages = self.calc_returns(rewards, dones, values)
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        
-        # # Group training data by robot_id
-        # robot_data = {}
-        # for i, robot_id in enumerate(robot_ids):
-        #     if robot_id not in robot_data:
-        #         robot_data[robot_id] = {'indices': []}
-        #     robot_data[robot_id]['indices'].append(i)
-        
-        # Train for several epochs
-        for _ in range(PPO_EPOCHS):
-            # Update the centralized critic
-            value_pred = self.critic(states)
-            value_loss = F.mse_loss(value_pred, returns.unsqueeze(1))
-            self.tb_writer.add_scalar('Loss/Critic', value_loss.item(), self.step_count)
+            # Convert lists to tensors
+            states = torch.FloatTensor(np.array(self.states)).to(self.device)
+            global_states = torch.FloatTensor(np.array(self.global_states)).to(self.device)
+            actions = torch.FloatTensor(np.array(self.actions)).to(self.device)
+            old_log_probs = torch.FloatTensor(np.array(self.log_probs)).to(self.device)
+            returns = torch.FloatTensor(returns).to(self.device)
+            
+            # Update policy for multiple epochs
+            for _ in range(5):  # Typically 3-10 epochs
+                # Generate random indices for batches
+                indices = np.random.permutation(len(states))
+                
+                # Process in batches
+                for start_idx in range(0, len(states), BATCH_SIZE):
+                    idx = indices[start_idx:start_idx + BATCH_SIZE]
+                    
+                    batch_states = states[idx]
+                    batch_global_states = global_states[idx]
+                    batch_actions = actions[idx]
+                    batch_old_log_probs = old_log_probs[idx]
+                    batch_returns = returns[idx]
+                    
+                    # Get current policy evaluation
+                    current_log_probs, entropy = self.actor.evaluate_action(batch_states, batch_actions)
+                    current_values = self.critic(batch_global_states, batch_states).squeeze(-1)
+                    
+                    # Calculate advantage
+                    advantages = batch_returns - current_values.detach()
+                    
+                    # Normalize advantages
+                    if len(advantages) > 1:
+                        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+                    
+                    # PPO ratio and surrogate loss
+                    ratio = torch.exp(current_log_probs - batch_old_log_probs)
+                    surr1 = ratio * advantages
+                    surr2 = torch.clamp(ratio, 1.0 - EPSILON, 1.0 + EPSILON) * advantages
+                    
+                    # Calculate losses
+                    actor_loss = -torch.min(surr1, surr2).mean()
+                    critic_loss = F.mse_loss(current_values, batch_returns)
+                    entropy_loss = -entropy.mean()
+                    
+                    # Total loss
+                    loss = actor_loss + VALUE_COEF * critic_loss + ENTROPY_COEF * entropy_loss
+                    
+                    # Update networks
+                    self.actor_optimizer.zero_grad()
+                    self.critic_optimizer.zero_grad()
+                    loss.backward()
+                    
+                    # Clip gradients
+                    torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 0.5)
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+                    
+                    self.actor_optimizer.step()
+                    self.critic_optimizer.step()
+            
+            # Update training stats
+            self.stats["updates"] += 1
+            if len(self.stats["rewards"]) > 0:
+                self.stats["mean_reward"] = np.mean(self.stats["rewards"][-100:])
+            
+            # Log stats periodically
+            if self.stats["updates"] % LOG_EVERY == 0:
+                log(f"Update {self.stats['updates']}, Steps: {self.stats['steps']}, "
+                    f"Mean reward: {self.stats['mean_reward']:.4f}")
+                self.writer.add_scalar("Reward/Mean", self.stats["mean_reward"], self.stats["updates"])
+                self.writer.add_scalar("Loss/Actor", actor_loss.item(), self.stats["updates"])
+                self.writer.add_scalar("Loss/Critic", critic_loss.item(), self.stats["updates"])
+                self.writer.add_scalar("Loss/Entropy", entropy_loss.item(), self.stats["updates"])
 
-            self.critic_optimizer.zero_grad()
-            value_loss.backward()
-            nn.utils.clip_grad_norm_(self.critic.parameters(), MAX_GRAD_NORM)
-            self.critic_optimizer.step()
-
-            # Update the shared actor (decentralized execution)
-            new_log_probs, entropy = self.actor.evaluate(states, actions)
-            ratio = torch.exp(new_log_probs - old_log_probs)
-            surr1 = ratio * advantages
-            surr2 = torch.clamp(ratio, 1.0 - PPO_EPSILON, 1.0 + PPO_EPSILON) * advantages
-            actor_loss = -torch.min(surr1, surr2).mean() - ENTROPY_COEF * entropy.mean()
-
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            nn.utils.clip_grad_norm_(self.actor.parameters(), MAX_GRAD_NORM)
-            self.actor_optimizer.step()
-
-            self.tb_writer.add_scalar('Loss/Actor', actor_loss.item(), self.step_count)
-        
-        # Clear memory after update
-        self.memory.clear()
-        
-        # Save models periodically
-        if self.step_count % 1000 == 0:
-            self.save_models()
-            self.save_logs()
-    
-    def calculate_reward(self, prev_state, curr_state, global_state):
-        """Calculate reward based on state transitions"""
-        # Extract relevant metrics
-        distance_change = prev_state[0] - curr_state[0]  # Reward for getting closer to nest
-        collisions_occurred = curr_state[2] > prev_state[2]  # Penalty for collisions
-        path_efficiency = curr_state[3]  # Reward for efficient path
-        angular_deviation = curr_state[4]  # Penalty for deviating from optimal path
-        nest_congestion = global_state[0]  # Penalty for approaching congested nest
-        reached_nest = curr_state[5] # Check if robot reached the nest
-        # Reward components
-        reward_distance = 2.0 * distance_change  # Positive reward for approaching nest
-        reward_collision = -5.0 * curr_state[2]  # Collision penalty
-        reward_efficiency = 1.0 * path_efficiency  # Efficiency bonus
-        reward_deviation = -0.75 * angular_deviation  # Deviation penalty
-        reward_congestion = -1.0 * nest_congestion * max(0, 1.0 - curr_state[0])  # Congestion penalty (increases as robot gets closer to nest)
-        reward_reach_nest = 20.0 if reached_nest >= 0.5 else 0.0
-        
-        # Total reward
-        reward = reward_distance + reward_collision + reward_efficiency + reward_deviation + reward_congestion + reward_reach_nest
-        
-        return reward
-    
-    def get_action(self, robot_id, state, global_state, training=True):
-        """Get action for a robot based on its current state"""
-        # combined_state = np.concatenate([state, global_state])
-        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
-        
-        # actor = self.get_actor(robot_id)
-        actor = self.get_actor()
+            # Reset buffers after update
+            self.reset_buffers()
+            
+            # Save models periodically
+            if self.stats["updates"] % 10 == 0:
+                self.save_models()
+                
+    def select_action(self, state, global_state, deterministic=False):
+        """Select an action based on current policy"""
         with torch.no_grad():
-            if training:
-                action = actor.get_action(state_tensor, deterministic=False)
-                log_prob, _ = actor.evaluate(state_tensor, action)
-            else:
-                action = actor.get_action(state_tensor, deterministic=True)
-                log_prob = torch.zeros(1)
-
-        return action.squeeze().cpu().numpy(), log_prob.item()
-    
-    def train_step(self, actor_states, global_state):
-        """Process a training step from ARGoS simulation"""
-        self.step_count += 1
-        
-        # Convert global state to numpy array
-        global_state_array = np.array([
-            global_state[0],  # nest_congestion_index
-            global_state[1],  # mean_path_efficiency
-            global_state[2]   # total_collisions
-        ])
-        
-        # Process each robot's state and determine actions
-        actions = {}
-        new_states = {}
-        
-        # Keep track of metrics for logging
-        episode_collisions = 0
-        episode_efficiency = 0
-        robot_count = 0
-        
-        # First, convert robot states and store prev_states
-        for robot_id, state in actor_states.items():
-            # Convert state to numpy array
-            robot_state = np.array([
-                state[0],  # distance_to_nest
-                state[1],  # timesteps_returning
-                state[2],  # collisions
-                state[3],  # path_efficiency
-                state[4],   # angular_deviation
-                state[5]   # reached_nest
-            ])
+            # Convert state to tensor
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            global_state_tensor = torch.FloatTensor(global_state).unsqueeze(0).to(self.device)
             
-            # Store the state
-            new_states[robot_id] = robot_state
+            # Get action from actor network
+            action, mean, log_std = self.actor.get_action(state_tensor, deterministic)
             
-            # Track metrics
-            episode_collisions += state[2]
-            episode_efficiency += state[3]
-            robot_count += 1
+            # Get value from critic network
+            value = self.critic(global_state_tensor, state_tensor).item()
             
-            # Check if we have previous state for this robot
-            if hasattr(self, 'prev_states') and robot_id in self.prev_states:
-                prev_state = self.prev_states[robot_id]
-                
-                # Calculate reward
-                reward = self.calculate_reward(prev_state, robot_state, global_state_array)
-                
-                # Get next action
-                action, log_prob = self.get_action(robot_id, robot_state, global_state_array)
-                actions[robot_id] = action
-                
-                # Determine if this is a terminal state (reached nest)
-                done = robot_state[5] == 1  # Distance to nest is very small
-                
-                # Store experience in memory
-                combined_state = np.concatenate([prev_state, global_state_array])
-                combined_next_state = np.concatenate([robot_state, global_state_array])
-                self.memory.add(combined_state, action, reward, combined_next_state, log_prob, done, global_state_array, robot_id)
-                
-                # Add reward to history for tracking
-                self.rewards_history.append(reward)
-            else:
-                # First encounter with this robot, just get an action
-                action, _ = self.get_action(robot_id, robot_state, global_state_array)
-                actions[robot_id] = action
+            # Calculate log probability of the action
+            std = log_std.exp()
+            dist = Normal(mean, std)
+            unscaled_action = self.actor.unscale_action(torch.tensor(action))
+            log_prob = dist.log_prob(unscaled_action.to(self.device)).sum(-1).item()
+            
+        return action.squeeze(0), value, log_prob
         
-        # Store current states as previous states for next step
-        if not hasattr(self, 'prev_states'):
-            self.prev_states = {}
-        self.prev_states = new_states
-        
-        # Update policy if enough steps have been accumulated
-        if len(self.memory) >= BATCH_SIZE:
-            self.update_policy()
-        
-        # Log metrics periodically
-        if self.step_count % 100 == 0:
-            if robot_count > 0:
-                avg_efficiency = episode_efficiency / robot_count
-                avg_collisions = episode_collisions / robot_count
-                self.efficiency_history.append(avg_efficiency)
-                self.collision_history.append(avg_collisions)
-                
-                self.log_data.append({
-                    'step': self.step_count,
-                    'avg_reward': np.mean(self.rewards_history) if self.rewards_history else 0,
-                    'avg_efficiency': avg_efficiency,
-                    'avg_collisions': avg_collisions,
-                    'nest_congestion': global_state_array[0],
-                    'mean_path_efficiency': global_state_array[1],
-                    'total_collisions': global_state_array[2]
-                })
-                self.tb_writer.add_scalar('Reward/Avg', np.mean(self.rewards_history), self.step_count)
-                self.tb_writer.add_scalar('Efficiency/Avg', avg_efficiency, self.step_count)
-                self.tb_writer.add_scalar('Collisions/Avg', avg_collisions, self.step_count)
-                self.tb_writer.add_scalar('Global/NestCongestion', global_state_array[0], self.step_count)
-                self.tb_writer.add_scalar('Global/MeanPathEfficiency', global_state_array[1], self.step_count)
-                self.tb_writer.add_scalar('Global/TotalCollisions', global_state_array[2], self.step_count)                
-                # print(f"Step {self.step_count}, Avg Reward: {np.mean(self.rewards_history):.3f}, "
-                #       f"Efficiency: {avg_efficiency:.3f}, Collisions: {avg_collisions:.2f}")
-        
-        # Encode actions as a JSON-serializable dictionary for C++
-        action_dict = {robot_id: action.tolist() for robot_id, action in actions.items()}
-        return action_dict
-    
     def save_models(self):
-        """Save all models to disk"""
-        # Save actors
-        # for robot_id, actor in self.actors.items():
-        #     torch.save(actor.state_dict(), os.path.join(MODEL_DIR, f"actor_{robot_id}.pt"))
-        torch.save(self.actor.state_dict(), os.path.join(MODEL_DIR, "actor_shared.pt"))
-        # Save critic
-        torch.save(self.critic.state_dict(), os.path.join(MODEL_DIR, "critic.pt"))
-        self.episode += 1 # Increment episode count after simulation ends
-        # Save training state
-        training_state = {
-            'episode': self.episode,
-            'step_count': self.step_count,
-        }
-        with open(os.path.join(MODEL_DIR, "training_state.json"), 'w') as f:
-            json.dump(training_state, f)
-
-        self.tb_writer.close()
-
-    
+        """Save model weights to disk"""
+        try:
+            torch.save(self.actor.state_dict(), f"{CHECKPOINT_DIR}/actor_model.pth")
+            torch.save(self.critic.state_dict(), f"{CHECKPOINT_DIR}/critic_model.pth")
+            with open(f"{CHECKPOINT_DIR}/stats.pkl", 'wb') as f:
+                pickle.dump(self.stats, f)
+            log(f"Models saved to {CHECKPOINT_DIR}")
+        except Exception as e:
+            log(f"Error saving models: {e}")
+            
     def load_models(self):
-        """Load models from disk if they exist"""
-        # Load training state
-        training_state_path = os.path.join(MODEL_DIR, "training_state.json")
-        if os.path.exists(training_state_path):
-            with open(training_state_path, 'r') as f:
-                training_state = json.load(f)
-                self.episode = training_state.get('episode', 0)
-                self.step_count = training_state.get('step_count', 0)
+        """Load model weights from disk if they exist"""
+        try:
+            if os.path.exists(f"{CHECKPOINT_DIR}/actor_model.pth"):
+                self.actor.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/actor_model.pth", 
+                                                    map_location=self.device))
+                log("Actor model loaded from disk")
                 
-                # Load actors for known robots
-                # for robot_id in training_state.get('robot_ids', []):
-                #     actor_path = os.path.join(MODEL_DIR, f"actor_{robot_id}.pt")
-                #     if os.path.exists(actor_path):
-                #         actor = Actor(self.actor_state_dim + self.global_state_dim, self.action_dim).to(device)
-                #         actor.load_state_dict(torch.load(actor_path))
-                #         self.actors[robot_id] = actor
-                #         self.actor_optimizers[robot_id] = optim.Adam(actor.parameters(), lr=ACTOR_LR)
-                actor_path = os.path.join(MODEL_DIR, "actor_shared.pt")
-                if os.path.exists(actor_path):
-                    self.actor.load_state_dict(torch.load(actor_path))
+            if os.path.exists(f"{CHECKPOINT_DIR}/critic_model.pth"):
+                self.critic.load_state_dict(torch.load(f"{CHECKPOINT_DIR}/critic_model.pth", 
+                                                     map_location=self.device))
+                log("Critic model loaded from disk")
+                
+            if os.path.exists(f"{CHECKPOINT_DIR}/stats.pkl"):
+                with open(f"{CHECKPOINT_DIR}/stats.pkl", 'rb') as f:
+                    self.stats = pickle.load(f)
+                log(f"Training stats loaded: Steps={self.stats['steps']}, Updates={self.stats['updates']}")
+        except Exception as e:
+            log(f"Error loading models: {e}")
 
-            # Load critic
-            critic_path = os.path.join(MODEL_DIR, "critic.pt")
-            if os.path.exists(critic_path):
-                self.critic.load_state_dict(torch.load(critic_path))
-    
-    def save_logs(self):
-        """Save training logs to disk"""
-        with open(self.log_file, 'w') as f:
-            json.dump(self.log_data, f)
+# Create global agent
+agent = PPOAgent()
 
-# Global trainer instance
-trainer = RLTrainer()
+# Experience memory for all robots
+robot_memories = {}
 
-def save_models():
-    """Interface function to save models from C++"""
-    trainer.save_models()
-    trainer.save_logs()
+# ==== C++ Interface Functions ====
 
-def train_step(actor_states, global_state):
+def get_actions(actor_states, global_state):
     """
-    Interface function called from C++
+    Interface for C++ to get actions for all robots
     
-    Parameters:
-    - actor_states: Dictionary mapping robot IDs to their states
-    - global_state: List of global state variables
+    Args:
+        actor_states: Dict of robot_id -> [distance_to_nest, timesteps_returning, 
+                                          collisions, path_efficiency, angular_deviation, reached_nest]
+        global_state: List [nest_congestion_index, mean_path_efficiency, total_collisions]
     
     Returns:
-    - Dictionary mapping robot IDs to actions
+        Dict of robot_id -> [degree, speed]
     """
-    return trainer.train_step(actor_states, global_state)
+    actions = {}
 
-# Testing function for local development
-def test():
-    """Simple test to ensure the code runs"""
-    # Sample actor states
-    actor_states = {
-        'robot_0': [1.5, 10, 0, 0.8, 0.2],  # distance, timesteps, collisions, efficiency, deviation
-        'robot_1': [2.0, 5, 1, 0.6, 0.3]
-    }
-    
-    # Sample global state
-    global_state = [0.3, 0.7, 5]  # congestion, efficiency, collisions
-    
-    # Call train_step
-    actions = train_step(actor_states, global_state)
-    print(f"Generated actions: {actions}")
-    
-    # Test a few more steps
-    for i in range(5):
-        # Update states
-        actor_states['robot_0'][0] -= 0.1  # Getting closer to nest
-        actor_states['robot_1'][0] -= 0.15
+    # Process each robot
+    for robot_id, state in actor_states.items():
+        # Check if we have previous state for this robot
+        prev_state = None
+        if robot_id in robot_memories:
+            prev_state = robot_memories[robot_id].get('state', None)
         
-        # Add a collision to robot_0
-        if i == 2:
-            actor_states['robot_0'][2] += 1
+        # Compute reward if we have previous state
+        reward = 0
+        if prev_state is not None:
+            reward = compute_reward(prev_state, state, robot_memories[robot_id].get('global_state', global_state))
+            
+            # Store experience
+            if 'action' in robot_memories[robot_id]:
+                agent.store_experience(
+                    prev_state,
+                    robot_memories[robot_id].get('global_state', global_state),
+                    robot_memories[robot_id]['action'],
+                    reward,
+                    robot_memories[robot_id].get('value', 0),
+                    robot_memories[robot_id].get('log_prob', 0),
+                    state[5] >= 0.5  # done if reached nest
+                )
         
-        actions = train_step(actor_states, global_state)
-        print(f"Step {i+1}, Actions: {actions}")
+        # Get action for current state
+        action, value, log_prob = agent.select_action(state, global_state)
+        
+        # Store memory for next time
+        robot_memories[robot_id] = {
+            'state': state,
+            'global_state': global_state,
+            'action': action,
+            'value': value,
+            'log_prob': log_prob
+        }
+        
+        # Add action to return dict
+        actions[robot_id] = action.tolist()
+    
+    # Periodically update policy
+    if agent.timesteps >= UPDATE_EVERY:
+        agent.update_policy()
+    
+    return actions
 
-# Only run test if executed directly
+def compute_reward(prev_state, curr_state, global_state):
+    """
+    Compute reward for a transition
+    
+    Args:
+        prev_state: Previous robot state
+        curr_state: Current robot state
+        global_state: Global state info
+    
+    Returns:
+        float: Reward value
+    """
+    # Extract relevant metrics
+    distance_change = prev_state[0] - curr_state[0]  # Reward for getting closer to nest
+    collisions_occurred = curr_state[2] > prev_state[2]  # Penalty for collisions
+    path_efficiency = curr_state[3]  # Reward for efficient path
+    angular_deviation = curr_state[4]  # Penalty for deviating from optimal path
+    nest_congestion = global_state[0]  # Penalty for approaching congested nest
+    reached_nest = curr_state[5]  # Check if robot reached the nest
+    
+    # Reward components
+    # reward_distance = 2.0 * distance_change  # Positive reward for approaching nest
+    # reward_collision = -5.0 if collisions_occurred else 0.0  # Collision penalty
+    # reward_efficiency = 1.0 * path_efficiency  # Efficiency bonus
+    # reward_deviation = -0.75 * angular_deviation  # Deviation penalty
+    # reward_congestion = -1.0 * nest_congestion * max(0, 1.0 - curr_state[0])
+    reward_reach_nest = 20.0 if reached_nest >= 0.5 else 0.0
+
+    reward_collision  = -1.0 if collisions_occurred else 0.0
+    reward_deviation  = -0.25 * angular_deviation
+    reward_congestion = -0.25 * nest_congestion * max(0, 1.0 - curr_state[0])
+    reward_efficiency = 2.0 * path_efficiency
+    reward_distance = 3.0 * distance_change
+
+    
+    # Total reward
+    reward = (reward_distance + 
+              reward_collision + 
+              reward_efficiency + 
+              reward_deviation + 
+              reward_congestion + 
+              reward_reach_nest)
+    
+    return reward
+
+def save_models():
+    """Interface for C++ to save models at the end of an experiment"""
+    agent.save_models()
+    if hasattr(self, 'writer'):
+        self.writer.flush()
+        self.writer.close()
+    return True
+
+# Initialize if running directly
 if __name__ == "__main__":
-    test()
+    log("RL trainer initialized")

@@ -250,7 +250,7 @@ void CPFA_loop_functions::PostStep() {
 	//log cstate
 	//argos::LOG << "cstate="<< cstate.mean_path_efficiency << ", "<< cstate.nest_congestion_index << ", "<< cstate.total_collisions << endl;
 
-	// m_mapRobotActions = CallPythonTrainStep(m_localStates, cstate);
+	m_mapRobotActions = CallPythonTrainStep(m_localStates, cstate);
 	
 	// CallPythonTrainStep(m_localStates, cstate);
 	//log m_mapRobotActions
@@ -819,7 +819,7 @@ std::map<std::string, std::vector<float>> CPFA_loop_functions::CallPythonTrainSt
         return actions;
     }
 
-    PyObject* pFunc = PyObject_GetAttrString(pModule, "train_step");
+    PyObject* pFunc = PyObject_GetAttrString(pModule, "get_actions");
     if (!pFunc || !PyCallable_Check(pFunc)) {
         std::cerr << "Cannot find function 'train_step'" << std::endl;
         Py_XDECREF(pFunc);
