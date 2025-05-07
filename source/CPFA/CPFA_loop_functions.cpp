@@ -215,6 +215,21 @@ void CPFA_loop_functions::PreStep() {
 
 void CPFA_loop_functions::PostStep() {
 
+	// print how many robots are at the wall every 1000 timesteps?
+	if (GetSpace().GetSimulationClock() % 1000 == 0) {
+		argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
+		for (auto it = footbots.begin(); it != footbots.end(); ++it) {
+			argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
+			BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
+			CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
+			if (c2.IsNearWall(0.1f)) {
+				robotsNearWall++;
+			}
+		}
+		argos::LOG << "robots near wall: " << robotsNearWall << std::endl;
+		robotsNearWall = 0;
+	}
+	
 	size_t N = Num_robots;
 	float sum_efficiency = 0.0f;
 	float sum_collisions = 0.0f;

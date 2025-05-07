@@ -93,6 +93,7 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 			float mean_path_efficiency;  // Normalized efficiency across robots
 			float total_collisions; // Total collisions across all robots
 		};
+		int robotsNearWall = 0;
 		unsigned int getNumberOfRobots();
         void increaseNumDistributedFoodByOne();
 		double getProbabilityOfSwitchingToSearching();

@@ -359,7 +359,8 @@ void BaseController::Stop() {
 
 void BaseController::Move() {
 	if (useDirectWheelControl) {
-		RobotForwardSpeed = robotActions[1];
+		RobotForwardSpeed = robotActionSpeed;
+		//argos::LOG << "RobotForwardSpeed: " << RobotForwardSpeed << " For robot " << GetId() << std::endl;
 	}
 	if(Wait() == true) return;
 

@@ -212,9 +212,7 @@ bool CPFA_controller::CollisionDetection() {
 
 
 		if(GetStatus() == "RETURNING") {
-			collisions_in_returning++;
-		}else{
-			collisions_in_returning = 0;
+			return isCollisionDetected;
 		}	 
 
 		Stop();
@@ -228,10 +226,10 @@ bool CPFA_controller::CollisionDetection() {
 		Real randomNumber = RNG->Uniform(CRange<Real>(0.5, 1.0));
         collisionDelay = SimulationTick() + (size_t)(randomNumber*SimulationTicksPerSecond());//qilu 10/26/2016	
 
-		if(GetStatus() == "RETURNING"){
-			return isCollisionDetected;
-		}
-		else if(collisionAngle <= 0.0)  {
+		// if(GetStatus() == "RETURNING" && !IsNearWall(0.1)){
+		// 	return isCollisionDetected;
+		// }
+		if(collisionAngle <= 0.0)  {
 			//argos::LOG << collisionAngle << std::endl << collisionVector << std::endl << std::endl;
 			// argos::LOG << collisionAngle  << std::endl;
 			SetLeftTurn(collisionAngle); //qilu 09/24/2016
@@ -245,6 +243,26 @@ bool CPFA_controller::CollisionDetection() {
 
 	return isCollisionDetected;
 }
+
+bool CPFA_controller::IsNearWall(Real threshold) {
+    // Get current position of the robot
+    argos::CVector2 pos = GetPosition();
+
+    // Get arena bounds
+    Real arena_min_x = LoopFunctions->ForageRangeX.GetMin();
+    Real arena_max_x = LoopFunctions->ForageRangeX.GetMax();
+    Real arena_min_y = LoopFunctions->ForageRangeY.GetMin();
+    Real arena_max_y = LoopFunctions->ForageRangeY.GetMax();
+
+    // Check if position is within threshold of any wall
+    return (
+        pos.GetX() - arena_min_x < threshold ||
+        arena_max_x - pos.GetX() < threshold ||
+        pos.GetY() - arena_min_y < threshold ||
+        arena_max_y - pos.GetY() < threshold
+    );
+}
+
 
 void CPFA_controller::SetLoopFunctions(CPFA_loop_functions* lf) {
 	LoopFunctions = lf;
@@ -610,12 +628,12 @@ void CPFA_controller::Returning() {
 		// }
 	// }
 
-	if (IsAtTarget()) {
-		//make it return to the nest
-		//argos::LOG << "REACHED TURNING TARGET" << std::endl;
-		SetIsHeadingToNest(true);
-		SetTarget(LoopFunctions->NestPosition);
-	}
+	// if (IsAtTarget()) {
+	// 	//make it return to the nest
+	// 	//argos::LOG << "REACHED TURNING TARGET" << std::endl;
+	// 	SetIsHeadingToNest(true);
+	// 	SetTarget(LoopFunctions->NestPosition);
+	// }
 
     // Track return state variables for RL
     if (first_time_returning) {
@@ -676,7 +694,11 @@ void CPFA_controller::Returning() {
     local_state.path_efficiency = path_efficiency;
     local_state.angular_deviation = angular_deviation;
 	local_state.reached_nest = (IsInTheNest() ? 1.0f : 0.0f);
-	
+
+	if (!hasCachedRLState) {
+        cachedRLState = local_state;
+        hasCachedRLState = true;
+    }
     
 	// log state values for each robot
 	// argos::LOG << "Robot ID: " << GetId() << std::endl;
@@ -691,28 +713,37 @@ void CPFA_controller::Returning() {
     // local_state.distance_to_nest /= LoopFunctions->GetMaxDistance();
     
     // Share state with RL framework only if not executing an action
-	
-    UpdateRLState(local_state);
+	// Only update the RL system after action is complete
+	if (actionRepeatCounter > 0) {
+		actionRepeatCounter--;
+		return;
+	}
 
-    if (actionRepeatCounter > 0) {
-        actionRepeatCounter--;
-        return;  // Still executing the previous action
-    }
+	// Action completed, now update RL state
+	UpdateRLState(cachedRLState);  // This sends the *previous* state to the loop functions
+	hasCachedRLState = false;      // Reset for next action
+    // UpdateRLState(local_state);
+
+    // if (actionRepeatCounter > 0) {
+    //     actionRepeatCounter--;
+    //     return;  // Still executing the previous action
+    // }
 
     if (robotActions.size() >= 2) {
         argos::LOG << "Robot " << GetId() << " is turning to degree " << robotActions[0]
                    << ", and changing speed to " << robotActions[1] << " at " << SimulationTick() << std::endl;
 
+		robotActionSpeed = robotActions[1]; 
         // SetRightTurn(robotActions[0]);
 		CRadians turn_angle(ToRadians(CDegrees(robotActions[0])));
 		CRadians new_heading = GetHeading() + turn_angle;
-		CVector2 move_vector(0.3, new_heading);  // 0.3 units forward -- this could possibly also be an action?
+		CVector2 move_vector(1, new_heading);  // 0.3 units forward -- this could possibly also be an action?
 		SetIsHeadingToNest(false);
 		SetTarget(GetPosition() + move_vector);
 		moving_to_target = true;
 		SetRightTurn(robotActions[0]);
         useDirectWheelControl = true;
-        actionRepeatCounter = 100;  // Repeat this action for x ticks so it could finish executing
+        actionRepeatCounter = 200;  // Repeat this action for x ticks so it could finish executing
     }	
 }
 

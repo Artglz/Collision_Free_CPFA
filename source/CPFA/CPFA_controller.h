@@ -63,7 +63,7 @@ class CPFA_controller : public BaseController {
 			RETURNING = 2,
 			SURVEYING = 3
 		} CPFA_state;		
-		
+		bool hasCachedRLState = false;
 		struct ActorState {
 			float distance_to_nest;  
 			int timesteps_returning;
@@ -72,6 +72,7 @@ class CPFA_controller : public BaseController {
 			float angular_deviation;    // angle between optimal and current direction
 			int reached_nest; // 1 if reached nest, 0 otherwise
 		};
+		ActorState cachedRLState;
 		// std::vector<float> robotActions;
 		int actionRepeatCounter = 0;           // how many steps to keep current action
 		std::deque<int> collision_history; // history of collisions
@@ -79,6 +80,8 @@ class CPFA_controller : public BaseController {
 		float recent_collision_sum = 0; // sum of recent collisions
 		bool moving_to_target = false;
 		bool reached_nest = false;
+		bool IsNearWall(Real threshold);
+
 	private:
   string 			controllerID;//qilu 07/26/2016
 		CCI_DifferentialSteeringActuator* m_pcWheels; //defining wheels

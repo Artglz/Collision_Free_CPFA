@@ -116,8 +116,9 @@ class ActorNetwork(nn.Module):
         scaled_action[..., 0] = np.clip(action[..., 0], -1, 1) * 180.0
         
         # Speed: Transform from [-1, 1] to [2, 32]
-        scaled_action[..., 1] = (np.clip(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 2.0) + 2.0
-        
+        # scaled_action[..., 1] = (np.clip(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 2.0) + 2.0
+        scaled_action[..., 1] = (np.clip(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 16.0) + 16.0
+
         return scaled_action
     
     def unscale_action(self, action):
@@ -132,8 +133,10 @@ class ActorNetwork(nn.Module):
         unscaled[..., 0] = torch.clamp(action[..., 0] / 180.0, -1, 1)
         
         # Speed: Transform from [2, 32] to [-1, 1]
-        unscaled[..., 1] = (torch.clamp(action[..., 1], 2, 32) - 2.0) / (32.0 - 2.0) * 2 - 1
-        
+        # unscaled[..., 1] = (torch.clamp(action[..., 1], 2, 32) - 2.0) / (32.0 - 2.0) * 2 - 1
+        # unscaled[..., 1] = (torch.clamp(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 16.0) + 16.0
+        unscaled[..., 1] = (torch.clamp(action[..., 1], 16, 32) - 16.0) / (32.0 - 16.0) * 2 - 1
+
         return unscaled
 
 class CriticNetwork(nn.Module):
@@ -495,29 +498,38 @@ def compute_reward(prev_state, curr_state, global_state):
     # reward_congestion = -1.0 * nest_congestion * max(0, 1.0 - curr_state[0])
     reward_reach_nest = 20.0 if reached_nest >= 0.5 else 0.0
 
-    reward_collision  = -1.0 if collisions_occurred else 0.0
-    reward_deviation  = -0.25 * angular_deviation
-    reward_congestion = -0.25 * nest_congestion * max(0, 1.0 - curr_state[0])
-    reward_efficiency = 2.0 * path_efficiency
-    reward_distance = 3.0 * distance_change
-
+    reward_collision  = -0.2 if collisions_occurred else 0.0
+    reward_deviation  = -0.75 * angular_deviation
+    # reward_congestion = -0.25 * nest_congestion * max(0, 1.0 - curr_state[0])
+    reward_efficiency = 3.0 * path_efficiency
+    reward_distance = 500.0 * distance_change
+    # print(f"distance_change: {distance_change}")
     
     # Total reward
     reward = (reward_distance + 
               reward_collision + 
               reward_efficiency + 
               reward_deviation + 
-              reward_congestion + 
+            #   reward_congestion + 
               reward_reach_nest)
     
+    if hasattr(agent, 'writer'):
+        step = agent.stats["steps"]
+        agent.writer.add_scalar("Reward/distance", reward_distance, step)
+        agent.writer.add_scalar("Reward/collision", reward_collision, step)
+        agent.writer.add_scalar("Reward/efficiency", reward_efficiency, step)
+        agent.writer.add_scalar("Reward/deviation", reward_deviation, step)
+        # agent.writer.add_scalar("Reward/congestion", reward_congestion, step)
+        agent.writer.add_scalar("Reward/reach_nest", reward_reach_nest, step)
+
     return reward
 
 def save_models():
     """Interface for C++ to save models at the end of an experiment"""
     agent.save_models()
-    if hasattr(self, 'writer'):
-        self.writer.flush()
-        self.writer.close()
+    if hasattr(agent, 'writer'):
+        agent.writer.flush()
+        agent.writer.close()
     return True
 
 # Initialize if running directly

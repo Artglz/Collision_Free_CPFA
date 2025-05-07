@@ -53,6 +53,7 @@ class BaseController : public argos::CCI_Controller {
 		void SetIsHeadingToNest(bool n);
 		bool IsAtTarget();
 		std::vector<float> robotActions;
+		float robotActionSpeed;
 
 	protected:
 		bool useDirectWheelControl = false;
