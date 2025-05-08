@@ -1,0 +1,62 @@
+[2025-05-07 21:46:45] Using device: cuda
+[2025-05-07 21:47:08] Update 10, Steps: 1000, Mean reward: 3.2037
+[2025-05-07 21:47:08] Models saved to source/CPFA/models
+[2025-05-07 21:47:27] Update 20, Steps: 2000, Mean reward: 2.9526
+[2025-05-07 21:47:27] Models saved to source/CPFA/models
+[2025-05-07 21:47:34] Models saved to source/CPFA/models
+[2025-05-07 21:47:36] Using device: cuda
+[2025-05-07 21:47:37] Actor model loaded from disk
+[2025-05-07 21:47:37] Critic model loaded from disk
+[2025-05-07 21:47:37] Training stats loaded: Steps=2376, Updates=23
+[2025-05-07 21:47:53] Update 30, Steps: 3076, Mean reward: -5.4088
+[2025-05-07 21:47:53] Models saved to source/CPFA/models
+[2025-05-07 21:48:10] Update 40, Steps: 4077, Mean reward: -23.1184
+[2025-05-07 21:48:10] Models saved to source/CPFA/models
+[2025-05-07 21:48:23] Models saved to source/CPFA/models
+[2025-05-07 21:48:25] Using device: cuda
+[2025-05-07 21:48:26] Actor model loaded from disk
+[2025-05-07 21:48:26] Critic model loaded from disk
+[2025-05-07 21:48:26] Training stats loaded: Steps=4888, Updates=48
+[2025-05-07 21:48:31] Update 50, Steps: 5088, Mean reward: 11.2403
+[2025-05-07 21:48:31] Models saved to source/CPFA/models
+[2025-05-07 21:48:47] Update 60, Steps: 6088, Mean reward: -27.3985
+[2025-05-07 21:48:47] Models saved to source/CPFA/models
+[2025-05-07 21:49:01] Update 70, Steps: 7090, Mean reward: -14.2900
+[2025-05-07 21:49:01] Models saved to source/CPFA/models
+[2025-05-07 21:49:13] Models saved to source/CPFA/models
+[2025-05-07 21:49:14] Using device: cuda
+[2025-05-07 21:49:15] Actor model loaded from disk
+[2025-05-07 21:49:15] Critic model loaded from disk
+[2025-05-07 21:49:15] Training stats loaded: Steps=7715, Updates=76
+[2025-05-07 21:49:24] Update 80, Steps: 8116, Mean reward: 5.0981
+[2025-05-07 21:49:24] Models saved to source/CPFA/models
+[2025-05-07 21:49:39] Update 90, Steps: 9116, Mean reward: -14.7773
+[2025-05-07 21:49:39] Models saved to source/CPFA/models
+[2025-05-07 21:49:54] Update 100, Steps: 10116, Mean reward: -9.2468
+[2025-05-07 21:49:54] Models saved to source/CPFA/models
+[2025-05-07 21:50:04] Models saved to source/CPFA/models
+[2025-05-07 21:50:06] Using device: cuda
+[2025-05-07 21:50:08] Actor model loaded from disk
+[2025-05-07 21:50:08] Critic model loaded from disk
+[2025-05-07 21:50:08] Training stats loaded: Steps=10767, Updates=106
+[2025-05-07 21:50:16] Update 110, Steps: 11167, Mean reward: 8.6982
+[2025-05-07 21:50:16] Models saved to source/CPFA/models
+[2025-05-07 21:50:30] Update 120, Steps: 12168, Mean reward: -11.6376
+[2025-05-07 21:50:30] Models saved to source/CPFA/models
+[2025-05-07 21:50:45] Update 130, Steps: 13169, Mean reward: -25.9623
+[2025-05-07 21:50:45] Models saved to source/CPFA/models
+[2025-05-07 21:51:04] Update 140, Steps: 14174, Mean reward: 4.0488
+[2025-05-07 21:51:04] Models saved to source/CPFA/models
+[2025-05-07 21:51:09] Models saved to source/CPFA/models
+[2025-05-07 21:51:11] Using device: cuda
+[2025-05-07 21:51:12] Actor model loaded from disk
+[2025-05-07 21:51:12] Critic model loaded from disk
+[2025-05-07 21:51:12] Training stats loaded: Steps=14405, Updates=142
+[2025-05-07 21:51:49] Using device: cuda
+[2025-05-07 21:51:50] Actor model loaded from disk
+[2025-05-07 21:51:50] Critic model loaded from disk
+[2025-05-07 21:51:50] Training stats loaded: Steps=14405, Updates=142
+[2025-05-07 21:52:08] Update 150, Steps: 15208, Mean reward: -12.1245
+[2025-05-07 21:52:08] Models saved to source/CPFA/models
+[2025-05-07 21:53:09] Update 160, Steps: 16210, Mean reward: -20.6822
+[2025-05-07 21:53:09] Models saved to source/CPFA/models

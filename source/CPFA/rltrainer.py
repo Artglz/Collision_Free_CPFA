@@ -42,7 +42,7 @@ def log(message):
 
 # Neural Network Models
 class ActorNetwork(nn.Module):
-    def __init__(self, input_dim=6, hidden_dim=128, action_dim=2):
+    def __init__(self, input_dim=6, hidden_dim=128, action_dim=1):
         super(ActorNetwork, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
@@ -110,14 +110,15 @@ class ActorNetwork(nn.Module):
             action = action.detach().cpu().numpy()
             
         # Scale each dimension independently
-        scaled_action = np.zeros_like(action)
+        # scaled_action = np.zeros_like(action)
         
         # Degree: Transform from [-1, 1] to [-180, 180]
-        scaled_action[..., 0] = np.clip(action[..., 0], -1, 1) * 180.0
+        # scaled_action[..., 0] = np.clip(action[..., 0], -1, 1) * 180.0
         
         # Speed: Transform from [-1, 1] to [2, 32]
         # scaled_action[..., 1] = (np.clip(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 2.0) + 2.0
-        scaled_action[..., 1] = (np.clip(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 16.0) + 16.0
+        # scaled_action[..., 1] = (np.clip(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 16.0) + 16.0
+        scaled_action = (np.clip(action, -1, 1) + 1) / 2 * (16.0 - 2.0) + 2.0
 
         return scaled_action
     
@@ -127,15 +128,17 @@ class ActorNetwork(nn.Module):
         if isinstance(action, np.ndarray):
             action = torch.FloatTensor(action)
             
-        unscaled = torch.zeros_like(action)
+        # unscaled = torch.zeros_like(action)
         
         # Degree: Transform from [-180, 180] to [-1, 1]
-        unscaled[..., 0] = torch.clamp(action[..., 0] / 180.0, -1, 1)
+        # unscaled[..., 0] = torch.clamp(action[..., 0] / 180.0, -1, 1)
         
         # Speed: Transform from [2, 32] to [-1, 1]
         # unscaled[..., 1] = (torch.clamp(action[..., 1], 2, 32) - 2.0) / (32.0 - 2.0) * 2 - 1
         # unscaled[..., 1] = (torch.clamp(action[..., 1], -1, 1) + 1) / 2 * (32.0 - 16.0) + 16.0
-        unscaled[..., 1] = (torch.clamp(action[..., 1], 16, 32) - 16.0) / (32.0 - 16.0) * 2 - 1
+        # unscaled[..., 1] = (torch.clamp(action[..., 1], 16, 32) - 16.0) / (32.0 - 16.0) * 2 - 1
+        unscaled = (torch.clamp(action, 2, 16) - 2.0) / (16.0 - 2.0) * 2 - 1
+
 
         return unscaled
 
@@ -448,6 +451,8 @@ def get_actions(actor_states, global_state):
                     robot_memories[robot_id].get('log_prob', 0),
                     state[5] >= 0.5  # done if reached nest
                 )
+                # if state[5] >= 0.5:
+                #     print(f"Robot {robot_id} reached the nest with reward: {reward} at timestep {agent.stats['steps']}")
         
         # Get action for current state
         action, value, log_prob = agent.select_action(state, global_state)
@@ -491,26 +496,40 @@ def compute_reward(prev_state, curr_state, global_state):
     reached_nest = curr_state[5]  # Check if robot reached the nest
     
     # Reward components
-    # reward_distance = 2.0 * distance_change  # Positive reward for approaching nest
-    # reward_collision = -5.0 if collisions_occurred else 0.0  # Collision penalty
-    # reward_efficiency = 1.0 * path_efficiency  # Efficiency bonus
-    # reward_deviation = -0.75 * angular_deviation  # Deviation penalty
-    # reward_congestion = -1.0 * nest_congestion * max(0, 1.0 - curr_state[0])
-    reward_reach_nest = 20.0 if reached_nest >= 0.5 else 0.0
+    reward_distance = 30.0 * distance_change  # Positive reward for approaching nest
+    reward_collision = -80.0 * curr_state[2]  # Collision penalty
+    reward_efficiency = 5.0 * path_efficiency  # Efficiency bonus
+    reward_deviation = 0 * angular_deviation  # Deviation penalty
+    reward_congestion = -4000.0 * nest_congestion * max(0, 1.0 - curr_state[0])
+    reward_reach_nest = 300.0 if reached_nest >= 0.5 else 0.0
 
-    reward_collision  = -0.2 if collisions_occurred else 0.0
-    reward_deviation  = -0.75 * angular_deviation
+    # reward_collision  = -0.2 if collisions_occurred else 0.0
+    # reward_deviation  = -0.75 * angular_deviation
     # reward_congestion = -0.25 * nest_congestion * max(0, 1.0 - curr_state[0])
-    reward_efficiency = 3.0 * path_efficiency
-    reward_distance = 500.0 * distance_change
+    # reward_efficiency = 3.0 * path_efficiency
+    # reward_distance = 10.0 * distance_change
     # print(f"distance_change: {distance_change}")
-    
+
+    # if reached_nest >= 0.5:
+    #     print(global_state[0])
+    # print("Reward Distance: ", reward_distance)
+    # print("Reward Collision: ", reward_collision)
+    # print("Reward Efficiency: ", reward_efficiency)
+    # print("Reward Congestion: ", reward_congestion)
+    # print("Reward Reach Nest: ", reward_reach_nest)
+    # print("Total Reward: ", reward_distance + 
+    #         reward_collision + 
+    #         reward_efficiency + 
+    #         reward_deviation + 
+    #         reward_congestion + 
+    #         reward_reach_nest)
+    # print("===================================")
     # Total reward
     reward = (reward_distance + 
               reward_collision + 
               reward_efficiency + 
               reward_deviation + 
-            #   reward_congestion + 
+              reward_congestion + 
               reward_reach_nest)
     
     if hasattr(agent, 'writer'):
@@ -518,8 +537,8 @@ def compute_reward(prev_state, curr_state, global_state):
         agent.writer.add_scalar("Reward/distance", reward_distance, step)
         agent.writer.add_scalar("Reward/collision", reward_collision, step)
         agent.writer.add_scalar("Reward/efficiency", reward_efficiency, step)
-        agent.writer.add_scalar("Reward/deviation", reward_deviation, step)
-        # agent.writer.add_scalar("Reward/congestion", reward_congestion, step)
+        # agent.writer.add_scalar("Reward/deviation", reward_deviation, step)
+        agent.writer.add_scalar("Reward/congestion", reward_congestion, step)
         agent.writer.add_scalar("Reward/reach_nest", reward_reach_nest, step)
 
     return reward

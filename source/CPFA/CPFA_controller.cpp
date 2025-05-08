@@ -210,14 +210,14 @@ bool CPFA_controller::CollisionDetection() {
 	if(GoStraightAngleRangeInDegrees.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
 		 && collisionVector.Length() > 0.0) {
 
-
+		isCollisionDetected = true;
+		collision_counter++;
 		if(GetStatus() == "RETURNING") {
 			return isCollisionDetected;
 		}	 
 
 		Stop();
-		 isCollisionDetected = true;
-		 collision_counter++;
+
    
 		while(MovementStack.size() > 0) MovementStack.pop();
 
@@ -610,22 +610,22 @@ void CPFA_controller::Returning() {
 			startTime = SimulationTick();
 			useDirectWheelControl = false;
 		}
-		// } else {
-		// 	// Navigation logic when not at nest
-		// 	if (IsAtTarget()) {
-		// 		// Random search for nest
-		// 		argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
-		// 		argos::Real rand = RNG->Gaussian(USCV);
+		 else {
+			// Navigation logic when not at nest
+			if (IsAtTarget()) {
+				// Random search for nest
+				argos::Real USCV = LoopFunctions->UninformedSearchVariation.GetValue();
+				argos::Real rand = RNG->Gaussian(USCV);
 				
-		// 		argos::CRadians rotation(rand);
-		// 		argos::CRadians angle1(rotation);
-		// 		argos::CRadians angle2(GetHeading());
-		// 		argos::CRadians turn_angle(angle1 + angle2);
-		// 		argos::CVector2 turn_vector(SearchStepSize, turn_angle);
-		// 		SetIsHeadingToNest(false);
-		// 		SetTarget(turn_vector + GetPosition());
-		// 	}
-		// }
+				argos::CRadians rotation(rand);
+				argos::CRadians angle1(rotation);
+				argos::CRadians angle2(GetHeading());
+				argos::CRadians turn_angle(angle1 + angle2);
+				argos::CVector2 turn_vector(SearchStepSize, turn_angle);
+				SetIsHeadingToNest(false);
+				SetTarget(turn_vector + GetPosition());
+			}
+		}
 	// }
 
 	// if (IsAtTarget()) {
@@ -667,10 +667,10 @@ void CPFA_controller::Returning() {
 	CRadians heading_to_nest = (LoopFunctions->NestPosition - GetPosition()).Angle();
 	CRadians heading_error = (GetHeading() - heading_to_nest).SignedNormalize();
 	float angular_deviation = std::fabs(heading_error.GetValue());
-	
+	//argos::LOG << "Angular deviation: " << angular_deviation <<  " - for Robot: " << GetId() << std::endl;
 	// Calculate collisions
 	int collision_occurred = (CollisionDetection() ? 1 : 0);
-
+	// argos::LOG << collision_occurred << std::endl;
 	// Handle window
 	if (collision_history.size() >= window_size) {
 		int last_value = collision_history.front();
@@ -684,7 +684,7 @@ void CPFA_controller::Returning() {
 
 	// Calculate rate
 	float recent_collision_rate = static_cast<float>(recent_collision_sum) / window_size;
-
+	// argos::LOG << "Collision rate: " << recent_collision_rate <<  " - for Robot: " << GetId() << std::endl;
 
     // Package local actor state for RL
     ActorState local_state;
@@ -694,11 +694,13 @@ void CPFA_controller::Returning() {
     local_state.path_efficiency = path_efficiency;
     local_state.angular_deviation = angular_deviation;
 	local_state.reached_nest = (IsInTheNest() ? 1.0f : 0.0f);
-
-	if (!hasCachedRLState) {
-        cachedRLState = local_state;
-        hasCachedRLState = true;
-    }
+	// if (local_state.reached_nest == 1.0f) {
+	// 	argos::LOG << "Robot " << GetId() << " reached the nest!" << std::endl;
+	// }
+	// if (!hasCachedRLState) {
+    //     cachedRLState = local_state;
+    //     hasCachedRLState = true;
+    // }
     
 	// log state values for each robot
 	// argos::LOG << "Robot ID: " << GetId() << std::endl;
@@ -714,37 +716,40 @@ void CPFA_controller::Returning() {
     
     // Share state with RL framework only if not executing an action
 	// Only update the RL system after action is complete
-	if (actionRepeatCounter > 0) {
-		actionRepeatCounter--;
-		return;
-	}
+	// if (actionRepeatCounter > 0) {
+	// 	actionRepeatCounter--;
+	// 	return;
+	// }
 
 	// Action completed, now update RL state
-	UpdateRLState(cachedRLState);  // This sends the *previous* state to the loop functions
-	hasCachedRLState = false;      // Reset for next action
-    // UpdateRLState(local_state);
-
+	// UpdateRLState(cachedRLState);  // This sends the *previous* state to the loop functions
+	// hasCachedRLState = false;      // Reset for next action
+	rl_tick_counter++;
+	if(IsInTheNest() || rl_tick_counter >= 100) {
+    	UpdateRLState(local_state);
+		rl_tick_counter = 0;
+	}
     // if (actionRepeatCounter > 0) {
     //     actionRepeatCounter--;
     //     return;  // Still executing the previous action
     // }
 
-    if (robotActions.size() >= 2) {
-        argos::LOG << "Robot " << GetId() << " is turning to degree " << robotActions[0]
-                   << ", and changing speed to " << robotActions[1] << " at " << SimulationTick() << std::endl;
+    if (robotActions.size() >= 1) {
+        argos::LOG << "Robot " << GetId() << " changing speed to " << robotActions[0] << " at " << SimulationTick() << std::endl;
 
-		robotActionSpeed = robotActions[1]; 
+		robotActionSpeed = robotActions[0]; 
         // SetRightTurn(robotActions[0]);
-		CRadians turn_angle(ToRadians(CDegrees(robotActions[0])));
-		CRadians new_heading = GetHeading() + turn_angle;
-		CVector2 move_vector(1, new_heading);  // 0.3 units forward -- this could possibly also be an action?
-		SetIsHeadingToNest(false);
-		SetTarget(GetPosition() + move_vector);
-		moving_to_target = true;
-		SetRightTurn(robotActions[0]);
-        useDirectWheelControl = true;
-        actionRepeatCounter = 200;  // Repeat this action for x ticks so it could finish executing
+		// CRadians turn_angle(ToRadians(CDegrees(robotActions[0])));
+		// CRadians new_heading = GetHeading() + turn_angle;
+		// CVector2 move_vector(1, new_heading);  // 0.3 units forward -- this could possibly also be an action?
+		// SetIsHeadingToNest(false);
+		// SetTarget(GetPosition() + move_vector);
+		// moving_to_target = true;
+		// SetRightTurn(robotActions[0]);
+		useDirectWheelControl = true;
+        // actionRepeatCounter = 100;  // Repeat this action for x ticks so it could finish executing
     }	
+	//robotActions.clear();
 }
 
 void CPFA_controller::UpdateRLState(const ActorState& state) {
