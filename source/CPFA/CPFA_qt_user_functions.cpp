@@ -90,6 +90,7 @@ void CPFA_qt_user_functions::DrawOnArena(CFloorEntity& entity) {
 	DrawPheromones();
 	DrawNest();
 	DrawEntryPoint();
+	DrawCircleOnArena();
 
 	if(loopFunctions.DrawTargetRays == 1) DrawTargetRays();
 }
@@ -98,29 +99,85 @@ void CPFA_qt_user_functions::DrawOnArena(CFloorEntity& entity) {
  * This function is called by the DrawOnArena(...) function. If the iAnt_data
  * object is not initialized this function should not be called.
  *****/
+// void CPFA_qt_user_functions::DrawNest() {
+// 	/* 2d cartesian coordinates of the nest */
+// 	Real x_coordinate = loopFunctions.NestPosition.GetX();
+// 	Real y_coordinate = loopFunctions.NestPosition.GetY();
+
+// 	/* required: leaving this 0.0 will draw the nest inside of the floor */
+// 	Real elevation = loopFunctions.NestElevation;
+
+// 	/* 3d cartesian coordinates of the nest */
+// 	CVector3 nest_3d(x_coordinate, y_coordinate, elevation);
+
+// 	/* Draw the nest on the arena. */
+// 	//DrawCircle(nest_3d, CQuaternion(), loopFunctions.NestRadius, CColor::RED);
+//     DrawCylinder(nest_3d, CQuaternion(), loopFunctions.NestRadius, 0.008, CColor::GREEN);
+// }
+
 void CPFA_qt_user_functions::DrawNest() {
-	/* 2d cartesian coordinates of the nest */
-	Real x_coordinate = loopFunctions.NestPosition.GetX();
-	Real y_coordinate = loopFunctions.NestPosition.GetY();
+    for (const auto& nest_position : loopFunctions.NestPositions) {
+        /* 2D cartesian coordinates of the nest */
+        Real x_coordinate = nest_position.GetX();
+        Real y_coordinate = nest_position.GetY();
 
-	/* required: leaving this 0.0 will draw the nest inside of the floor */
-	Real elevation = loopFunctions.NestElevation;
+        /* Required: leaving this 0.0 will draw the nest inside of the floor */
+        Real elevation = loopFunctions.NestElevation;
 
-	/* 3d cartesian coordinates of the nest */
-	CVector3 nest_3d(x_coordinate, y_coordinate, elevation);
+        /* 3D cartesian coordinates of the nest */
+        CVector3 nest_3d(x_coordinate, y_coordinate, elevation);
 
-	/* Draw the nest on the arena. */
-	//DrawCircle(nest_3d, CQuaternion(), loopFunctions.NestRadius, CColor::RED);
-    DrawCylinder(nest_3d, CQuaternion(), loopFunctions.NestRadius, 0.008, CColor::GREEN);
+        /* Draw the nest on the arena */
+        DrawCylinder(nest_3d, CQuaternion(), loopFunctions.NestRadius, 0.008, CColor::GREEN);
+    }
+}
+
+void CPFA_qt_user_functions::DrawCircleOnArena() {
+    /* Define the center of the circle */
+    Real x_coordinate = 0.0; // X-coordinate of the circle's center
+    Real y_coordinate = 0.0; // Y-coordinate of the circle's center
+    Real elevation = 0.01;   // Elevation above the floor
+
+    /* Define the radius of the circle */
+    Real radius = 3;
+
+    /* Define the color of the circle */
+    CColor circleColor = CColor::RED;
+
+    /* Draw the circle */
+    DrawCircle(CVector3(x_coordinate, y_coordinate, elevation), CQuaternion(), radius, circleColor, false);
+
+    /* Define the color of the "X" */
+    CColor xColor = CColor::BLUE;
+
+    /* Adjust the endpoints of the "X" to fit within the circle */
+    Real diagonal_offset = radius * 0.7071; // sqrt(2)/2 ensures the endpoints lie within the circle
+
+    /* Draw the "X" using two diagonal rays */
+    CVector3 start1(x_coordinate - diagonal_offset, y_coordinate - diagonal_offset, elevation); // Bottom-left corner
+    CVector3 end1(x_coordinate + diagonal_offset, y_coordinate + diagonal_offset, elevation);   // Top-right corner
+    DrawRay(CRay3(start1, end1), xColor);
+
+    CVector3 start2(x_coordinate - diagonal_offset, y_coordinate + diagonal_offset, elevation); // Top-left corner
+    CVector3 end2(x_coordinate + diagonal_offset, y_coordinate - diagonal_offset, elevation);   // Bottom-right corner
+    DrawRay(CRay3(start2, end2), xColor);
 }
 
 // draw entry point from cpfa controller
 void CPFA_qt_user_functions::DrawEntryPoint() {
-    // Real x_coordinate = loopFunctions.EntryPoint.GetX();
-    // Real y_coordinate = loopFunctions.EntryPoint.GetY();
-	// Real elevation = loopFunctions.NestElevation;
-	// CVector3 entry_point_3d(x_coordinate, y_coordinate, elevation);
-	// DrawCylinder(entry_point_3d, CQuaternion(), 0.08, 0.008, CColor::ORANGE);
+    /* Iterate over the entryPoints list in loopFunctions */
+    for (const auto& entry_point : loopFunctions.entryPoints) {
+        /* Get the coordinates of the entry point */
+        Real x_coordinate = entry_point.GetX();
+        Real y_coordinate = entry_point.GetY();
+        Real elevation = loopFunctions.NestElevation; // Slight elevation above the floor
+
+        /* Define the 3D position of the entry point */
+        CVector3 entry_point_3d(x_coordinate, y_coordinate, elevation);
+
+        /* Draw the entry point as a cylinder */
+        DrawCylinder(entry_point_3d, CQuaternion(), 0.08, 0.008, CColor::ORANGE);
+    }
 }
 
 void CPFA_qt_user_functions::DrawFood() {

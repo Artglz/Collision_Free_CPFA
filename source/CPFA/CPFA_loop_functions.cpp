@@ -81,7 +81,26 @@ void CPFA_loop_functions::Init(argos::TConfigurationNode &node) {
 	argos::GetNodeAttribute(settings_node, "FoodRadius", FoodRadius);
     argos::GetNodeAttribute(settings_node, "NestRadius", NestRadius);
 	argos::GetNodeAttribute(settings_node, "NestElevation", NestElevation);
-    argos::GetNodeAttribute(settings_node, "NestPosition", NestPosition);
+
+	std::string nest_positions_str;
+	argos::GetNodeAttribute(settings_node, "NestPosition", nest_positions_str);
+
+	// Parse the positions into the NestPositions vector
+	std::stringstream ss(nest_positions_str);
+	std::string position;
+	while (std::getline(ss, position, ';')) {
+	    std::stringstream pos_stream(position);
+	    argos::Real x, y;
+	    char comma;
+	    pos_stream >> x >> comma >> y;
+	    NestPositions.emplace_back(x, y);
+		// argos::LOG << "Nest Position: " << x << ", " << y << std::endl;
+	}
+	//print content of nest_positions
+	for (const auto& pos : NestPositions) {
+		argos::LOG << "Nest Position: " << pos.GetX() << ", " << pos.GetY() << std::endl;
+	}
+
     FoodRadiusSquared = FoodRadius*FoodRadius;
     //Number of distributed foods
     if (FoodDistribution == 1){
@@ -91,7 +110,6 @@ void CPFA_loop_functions::Init(argos::TConfigurationNode &node) {
         NumDistributedFood = FoodItemCount;  
     }
     
-	m_collision_threshold = 0.1f;
 	// calculate the forage range and compensate for the robot's radius of 0.085m
 	argos::CVector3 ArenaSize = GetSpace().GetArenaSize();
 	argos::Real rangeX = (ArenaSize.GetX() / 2.0) - 0.085;
@@ -212,157 +230,7 @@ void CPFA_loop_functions::PreStep() {
 }
 
 
-// Euclidean distance between two points
-double CPFA_loop_functions::euclideanDistance(double x1, double y1, double x2, double y2) {
-    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
-}
-
-// Calculate sigmoid function
-double CPFA_loop_functions::sigmoid(double z) {
-    return 1.0 / (1.0 + exp(-z));
-}
-
-double CPFA_loop_functions::calculateAngle(const argos::CVector2& p1, const argos::CVector2& p2, const argos::CVector2& p3){
-	// Vectors
-	double dx1 = p2.GetX() - p1.GetX();
-	double dy1 = p2.GetY() - p1.GetY();
-	double dx2 = p3.GetX() - p2.GetX();
-	double dy2 = p3.GetY() - p2.GetY();
-
-	// Dot product and magnitudes
-	double dot_product = dx1 * dx2 + dy1 * dy2;
-	double mag_v1 = sqrt(dx1 * dx1 + dy1 * dy1);
-	double mag_v2 = sqrt(dx2 * dx2 + dy2 * dy2);
-
-	double angle = 0.0;
-	if (mag_v1 > 0 && mag_v2 > 0) {
-		double cosine_angle = dot_product / (mag_v1 * mag_v2);
-		cosine_angle = std::clamp(cosine_angle, -1.0, 1.0); // Clamp for stability
-		angle = acos(cosine_angle) * (180.0 / M_PI); // Convert to degrees
-	}
-	
-	return angle;
-}
-
-// Function to calculate features and predict congestion
-bool CPFA_loop_functions::predictCongestion(size_t indexes, const std::vector<argos::CVector2>& coordinates, double ratio_distance_lag_1, double ratio_distance_lag_2, double angle_lag_1, double angle_lag_2) {
-	// Validate indices
-    // if (start_index >= end_index || end_index > coordinates.size() || coordinates.size() < 50) {
-    //     std::cerr << "Error: Invalid indices or insufficient coordinates (expected at least 50).\n";
-    //     return false;
-    // }
-    // Load model parameters from JSON
-    std::ifstream file("/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/source/CPFA/logistic_model_more_features.json");
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open logistic_model.json.\n";
-        return false;
-    }
-    Json::Value modelParams;
-    file >> modelParams;
-
-	size_t start_index = coordinates.size() - 150;
-	size_t end_index = coordinates.size();
-
-	// if (!modelParams["intercept"].isDouble()) {
-	// 	std::cerr << "Error: 'intercept' is not a double. Value: " << modelParams["intercept"] << std::endl;
-	// }
-    // Extract coefficients
-    double intercept = modelParams["intercept"][0].asDouble();
-	double coef_ratio_distance = modelParams["coefficients"][0][0].asDouble();
-	double coef_angle = modelParams["coefficients"][0][1].asDouble();
-    double coef_indexes = modelParams["coefficients"][0][2].asDouble();
-	double coef_ratio_distance_lag_1 = modelParams["coefficients"][0][3].asDouble();
-	double coef_angle_lag_1 = modelParams["coefficients"][0][4].asDouble();
-    double coef_indexes_lag_1 = modelParams["coefficients"][0][5].asDouble();	
-	double coef_ratio_distance_lag_2 = modelParams["coefficients"][0][6].asDouble();
-	double coef_angle_lag_2 = modelParams["coefficients"][0][7].asDouble();
-    double coef_indexes_lag_2 = modelParams["coefficients"][0][8].asDouble();	
-
-
-	//print all the coefficients
-	//argos::LOG << "intercept: " << intercept << " coef_ratio_distance: " << coef_ratio_distance << " coef_angle: " << coef_angle << " coef_indexes: " << coef_indexes << " coef_ratio_distance_lag_1: " << coef_ratio_distance_lag_1 << " coef_angle_lag_1: " << coef_angle_lag_1 << " coef_indexes_lag_1: " << coef_indexes_lag_1 << " coef_ratio_distance_lag_2: " << coef_ratio_distance_lag_2 << " coef_angle_lag_2: " << coef_angle_lag_2 << " coef_indexes_lag_2: " << coef_indexes_lag_2 << std::endl;
-
-
-    // Calculate optimal distance based on a constant velocity (e.g., 0.08 units per step)
-    double optimal_distance = 0.08 * 150;
-
-    // Calculate start-to-end distance
-    double start_to_end_distance = euclideanDistance(
-        coordinates[start_index].GetX(), coordinates[start_index].GetY(),
-        coordinates[end_index].GetX(), coordinates[end_index].GetY()
-    );
-
-    // Calculate ratio_distance
-    double ratio_distance = start_to_end_distance / optimal_distance;
-	//log all the ratio distances
-	//argos::LOG << "ratio_distance: " << ratio_distance << "ratio_distance_lag_1: " << ratio_distance_lag_1 << "ratio_distance_lag_2: " << ratio_distance_lag_2 << std::endl;
-    // Calculate angle using the angle calculator logic
-    if (end_index - start_index < 3) {
-        std::cerr << "Error: Insufficient points to calculate angles.\n";
-        return false; // Need at least 3 points for angle calculation
-    }
-
-    size_t middle_index = (start_index + end_index) / 2;
-    argos::CVector2 p1 = coordinates[start_index];
-    argos::CVector2 p2 = coordinates[middle_index];
-    argos::CVector2 p3 = coordinates[end_index];
-
-    // Vectors
-    double dx1 = p2.GetX() - p1.GetX();
-    double dy1 = p2.GetY() - p1.GetY();
-    double dx2 = p3.GetX() - p2.GetX();
-    double dy2 = p3.GetY() - p2.GetY();
-
-    // Dot product and magnitudes
-    double dot_product = dx1 * dx2 + dy1 * dy2;
-    double mag_v1 = sqrt(dx1 * dx1 + dy1 * dy1);
-    double mag_v2 = sqrt(dx2 * dx2 + dy2 * dy2);
-
-    double angle = 0.0;
-    if (mag_v1 > 0 && mag_v2 > 0) {
-        double cosine_angle = dot_product / (mag_v1 * mag_v2);
-        cosine_angle = std::clamp(cosine_angle, -1.0, 1.0); // Clamp for stability
-        angle = acos(cosine_angle) * (180.0 / M_PI); // Convert to degrees
-    }
-
-	//argos::LOG << "indexes: " << indexes << " " << indexes-100 << " " << indexes-200 << std::endl;
-
-    // Logistic regression probability
-	double z = intercept +
-			   (coef_indexes * static_cast<double>(indexes)) +
-			   (coef_ratio_distance * ratio_distance) +
-			   (coef_angle * angle) +
-			   (coef_ratio_distance_lag_1 * ratio_distance_lag_1) +
-			   (coef_angle_lag_1 * angle_lag_1) +
-			   (coef_indexes_lag_1 * static_cast<double>(indexes - 100)) +
-			   (coef_ratio_distance_lag_2 * ratio_distance_lag_2) +
-			   (coef_angle_lag_2 * angle_lag_2) +
-			   (coef_indexes_lag_2 * static_cast<double>(indexes - 200));
-
-    double probability = sigmoid(z); // Ensure sigmoid function is defined
-
-    // Predict if the robot is congested
-    return probability >= 0.5;
-}
-
 void CPFA_loop_functions::PostStep() {
-	// cleaned this
-	// check if any robot picked up a resource, if so change isZoneActive to true
-	
-	// if (!isZoneActive) {
-	// 	argos::CSpace::TMapPerType& footbots = GetSpace().GetEntitiesByType("foot-bot");
-	// 	for (argos::CSpace::TMapPerType::iterator it = footbots.begin(); it != footbots.end(); ++it) {
-	// 		argos::CFootBotEntity& footBot = *argos::any_cast<argos::CFootBotEntity*>(it->second);
-	// 		BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
-	// 		CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
-	// 		if (c2.IsHoldingFood()) {
-	// 			isZoneActive = true;
-	// 			c2.setZoneActive(true);
-	// 			argos::LOG << "Zone is active" << std::endl;
-	// 			break;
-	// 		}
-	// 	}
-	// }
 
 }
 
@@ -399,8 +267,6 @@ void CPFA_loop_functions::PostExperiment() {
     //  printf("%f, %f, %lu\n", score, getSimTimeInSeconds(), RandomSeed);
     //  printf("%f\n", score);  
 	// argos::LOG << resources_dropped << " resources dropped" << std::endl;
-
-	argos::LOG << totalResourcesPickedUp << " resources picked up" << std::endl;	
 
     if (PrintFinalScore == 1) {
         string type="";
@@ -463,7 +329,7 @@ void CPFA_loop_functions::PostExperiment() {
     
         //dataOutput <<data.CollisionTime/16.0<<", "<< time_in_minutes << ", " << data.RandomSeed << endl;
         //dataOutput << Score() << ", "<<(CollisionTime-16*Score())/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
-        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", " << totalResourcesPickedUp << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second) << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
         dataOutput.close();
 
 		/*
@@ -476,76 +342,8 @@ void CPFA_loop_functions::PostExperiment() {
         for(size_t i=1; i< ForageList.size(); i++) forageDataOutput<<", "<<ForageList[i];
         forageDataOutput<<"\n";
         forageDataOutput.close();
-        
-        ofstream trajOutput( (header+ "iAntTrajData.txt").c_str(), ios::app);
-        // output to file
-        //if(trajOutput.tellp() == 0) {
-            trajOutput << "trajs\n";//qilu 11/2023
-        //}
-        
-        for(map<string, std::vector<CVector2>>::iterator it= Trajectory.begin(); it!= Trajectory.end(); ++it) {
-			
-			for(size_t j = 0; j < it->second.size(); j++) {
-				trajOutput << it->second[j]<<"; ";
-			}
-			trajOutput << "\n";
-		
-		}
-        
-		trajOutput.close();
-
-		std::ofstream droppedtrajOutput((header + "iAntDroppedTrajData.txt").c_str(), std::ios::app);
-
-		// Check if the file was successfully opened
-		if (!trajOutput) {
-			std::cerr << "Error opening file for writing dropped trajectories." << std::endl;
-			return;
-		}
-
-		// Write a header or label for the data (if required)
-		droppedtrajOutput << "Dropped Trajectories\n";
-
-		// Iterate through each robot's dropped trajectories
-		for (std::map<std::string, std::vector<std::vector<argos::CVector2>>>::iterator it = dropped_trajectories.begin(); it != dropped_trajectories.end(); ++it) {
-			const std::string& robotId = it->first;  // Robot ID
-			const std::vector<std::vector<argos::CVector2>>& trajectories = it->second;  // Vector of trajectories
-
-			// Iterate through each trajectory for the current robot
-			for (size_t i = 0; i < trajectories.size(); ++i) {
-				const std::vector<argos::CVector2>& trajectory = trajectories[i];
-
-				// Write the robot ID and trajectory index (optional for clarity)
-				droppedtrajOutput << "Robot: " << robotId << ", Nest Counter: " << counter_nest_history[i] << ", Collision Counter: " << collision_history[i] <<", Trajectory " << i + 1 << ":\n";
-
-				// Iterate through the positions in the trajectory
-				for (size_t j = 0; j < trajectory.size(); ++j) {
-					droppedtrajOutput << trajectory[j] << "; ";  // Write each position (CVector2)
-				}
-				droppedtrajOutput << "\n";  // Newline after each trajectory
-			}
-		}
-		
-		// droppedtrajOutput << "\nRobots near the nest at each timestep:\n";
-
-		// for (size_t i = 0; i < counter_nest_history.size(); ++i) {
-		// 	droppedtrajOutput << "Timestep " << i << ": " << counter_nest_history[i] << "\n";
-		// }
-
-		// Close the file after writing
-		droppedtrajOutput.close();       
+      
       }  
-
-	// get food collected for each robot at each timestep
-	ofstream foodOutput( "./results/foodData.txt", ios::app);
-	if(foodOutput.tellp() == 0) {
-	   foodOutput << "food_collected\n";
-	   //foodOutput << CollectedFoodList.size() << endl;
-	}
-	for(size_t i = 0; i < CollectedFoodList.size(); i++) {
-	   foodOutput << CollectedFoodList[i] << ", ";
-	}
-	foodOutput << endl;
-	foodOutput.close();
 
 
 }
@@ -789,10 +587,15 @@ bool CPFA_loop_functions::IsOutOfBounds(argos::CVector2 p, size_t length, size_t
 
   
 bool CPFA_loop_functions::IsCollidingWithNest(argos::CVector2 p) {
-	argos::Real nestRadiusPlusBuffer = NestRadius + FoodRadius;
-	argos::Real NRPB_squared = nestRadiusPlusBuffer * nestRadiusPlusBuffer;
+    argos::Real nestRadiusPlusBuffer = NestRadius + FoodRadius;
+    argos::Real NRPB_squared = nestRadiusPlusBuffer * nestRadiusPlusBuffer;
 
-      return ( (p - NestPosition).SquareLength() < NRPB_squared) ;
+    for (const auto& nest_position : NestPositions) {
+        if ((p - nest_position).SquareLength() < NRPB_squared) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool CPFA_loop_functions::IsCollidingWithFood(argos::CVector2 p) {
