@@ -53,6 +53,8 @@ class BaseController : public argos::CCI_Controller {
 		void SetIsHeadingToNest(bool n);
 		bool IsAtTarget();
 
+		float tempRobotSpeed = 8.0f;
+		bool useTempRobotSpeed = false;
 	protected:
 
 		argos::CRandom::CRNG* RNG;

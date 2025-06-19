@@ -20,7 +20,7 @@ BaseController::BaseController() :
 	TargetAngleTolerance(0.04),
 	SearchStepSize(0.16),
 	RobotForwardSpeed(16.0),
-	RobotRotationSpeed(4.0),
+	RobotRotationSpeed(8.0),
 	TicksToWaitWhileMoving(0.0),
 	CurrentMovementState(STOP),
 	heading_to_nest(false),
@@ -83,6 +83,10 @@ argos::CVector2 BaseController::GetTarget() {
 }
 
 void BaseController::SetTarget(argos::CVector2 t) {
+
+    if (t.GetX() == 0.0 && t.GetY() == 0.0) {
+        argos::LOGERR << "Target set to (0,0) for robot: " << GetId() << std::endl;
+    }
 
 	argos::Real x(t.GetX()), y(t.GetY());
 
@@ -359,9 +363,17 @@ void BaseController::Stop() {
 
 void BaseController::Move() {
 
+
+
 	if(Wait() == true) return;
 
 	collisionFlag = CollisionDetection();
+	// if(useTempRobotSpeed) {
+	// 	RobotForwardSpeed = tempRobotSpeed;
+	// 	argos::LOG << "Collision detected, slowing down to " << RobotForwardSpeed << std::endl;	
+	// } else{
+	// 	RobotForwardSpeed = 16.0f;
+	// }
  //double randomNumber = RNG->Uniform(argos::CRange<double>(0.0, 1.0));//qilu 09/24/2016
 	/* move based on the movement state flag */
 	switch(CurrentMovementState) {

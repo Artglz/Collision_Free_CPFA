@@ -53,11 +53,171 @@ class CPFA_controller : public BaseController {
         
 		bool CollisionDetection() override;
 		CVector2 FindClosestEntryPoint();
+		int FindClosestForwardWaypoint(const std::vector<argos::CVector2>& path);
+		CVector2 FindClosestNest();
 		bool inCentralZone();
+		bool IsInsideCircleBoundary(const argos::CVector2& pos);
+		argos::CVector2 SafeTargetFromHeading(argos::CRadians base_angle, argos::Real step_size);
 		bool hasLoggedCentralZone = false;
-		std::vector<argos::CVector2> entryPoints = {{4, 0}, {-4, 0}, {0, 4}, {0, -4}}; // entry point of the paths
-		CVector2 entrypoint;
+		// std::vector<argos::CVector2> entryPoints = {{2.5, 0}, {-2.5, 0}, {0, 2.5}, {0, -2.5}}; // entry point of the paths
+		// std::vector<argos::CVector2> entryPath1 = {
+		// 	{2.5, 0}, {2.0, 0}, {2.0, 0.5}, {1.5, 0.5},
+		// 	{1.5, -0.5}, {1.0, -0.5}, {1.0, 0.5},
+		// 	{0.5, 0}, {0.3, 0}
+		// };
+		// std::vector<argos::CVector2> entryPath2 = {
+		// 	{-2.5, 0}, {-2.0, 0}, {-2.0, 0.5}, {-1.5, 0.5},
+		// 	{-1.5, -0.5}, {-1.0, -0.5}, {-1.0, 0.5},
+		// 	{-0.5, 0}, {-0.3, 0}
+		// };
+		// std::vector<argos::CVector2> entryPath3 = {
+		// 	{0, 2.5}, {0, 2.0}, {0.5, 2.0}, {0.5, 1.5},
+		// 	{-0.5, 1.5}, {-0.5, 1.0}, {0.5, 1.0},
+		// 	{0, 0.5}, {0, 0.3}
+		// };
+		// std::vector<argos::CVector2> entryPath4 = {
+		// 	{0, -2.5}, {0, -2.0}, {0.5, -2.0}, {0.5, -1.5},
+		// 	{-0.5, -1.5}, {-0.5, -1.0}, {0.5, -1.0}, 
+		// 	{0, -0.5}, {0, -0.3}
+		// };
+		// Circle center and radius (adjust values as needed)
+		const argos::CVector2 m_cCircleCenter = argos::CVector2(0.0, 0.0);
+		const argos::Real m_fCircleRadius = 2.0;  // meters
 
+		std::vector<argos::CVector2> entryPoints = {{2.0, 0}, {-2.0, 0}, {0, 2.0}, {0, -2.0}}; // entry point of the paths
+		const argos::Real EntryPointThreshold = 0.1; // Distance threshold for entry points
+
+		// std::vector<argos::CVector2> entryPath1 = {
+		// 	{2.0, 0.5}, {1.5, 0.5},
+		// 	{1.5, -0.5}, {1.0, -0.5}, {1.0, 0.5},
+		// 	{0.5, 0}, {0.3, 0}
+		// };
+		// std::vector<argos::CVector2> entryPath2 = {
+		// 	{-2.0, 0.5}, {-1.5, 0.5},
+		// 	{-1.5, -0.5}, {-1.0, -0.5}, {-1.0, 0.5},
+		// 	{-0.5, 0}, {-0.3, 0}
+		// };
+		// std::vector<argos::CVector2> entryPath3 = {
+		// 	{0.5, 2.0}, {0.5, 1.5},
+		// 	{-0.5, 1.5}, {-0.5, 1.0}, {0.5, 1.0},
+		// 	{0, 0.5}, {0, 0.3}
+		// };
+		// std::vector<argos::CVector2> entryPath4 = {
+		// 	{0.5, -2.0}, {0.5, -1.5},
+		// 	{-0.5, -1.5}, {-0.5, -1.0}, {0.5, -1.0}, 
+		// 	{0, -0.5}, {0, -0.3}
+		// };
+		// std::vector<argos::CVector2> entryPath1 = {
+		// 	{2.0, 0.0}, {1.3, -0.9}, {1.3, 0}, {1.3, 0.9},
+		// 	{0.95, 0.55}, {0.95, 0.0}, {0.95, -0.55},
+		// 	{0.6, -0.2}, {0.6, 0.2}, {0.3, 0}
+		// };
+		
+		// std::vector<argos::CVector2> entryPath2 = {
+		// 	{-2.0, 0.0}, {-1.3, -0.9}, {-1.3, 0}, {-1.3, 0.9},
+		// 	{-0.95, 0.55}, {-0.95, 0.0}, {-0.95, -0.55},
+		// 	{-0.6, -0.2}, {-0.6, 0.2}, {-0.3, 0}
+		// };
+		
+		// std::vector<argos::CVector2> entryPath3 = {
+		// 	{0.0, 2.0}, {0.9, 1.3}, {0, 1.3}, {-0.9, 1.3},
+		// 	{-0.55, 0.95}, {0.0, 0.95}, {0.55, 0.95},
+		// 	{0.2, 0.6}, {-0.2, 0.6}, {0, 0.3}
+		// };
+		
+		// std::vector<argos::CVector2> entryPath4 = {
+		// 	{0.0, -2.0}, {-0.9, -1.3}, {0, -1.3}, {0.9, -1.3},
+		// 	{0.55, -0.95}, {0.0, -0.95}, {-0.55, -0.95},
+		// 	{-0.2, -0.6}, {0.2, -0.6}, {0, -0.3}
+		// };
+		// std::vector<argos::CVector2> entryPath1 = {
+		// 	{2.0, 0}, {1.5, 0.0}, {1.5, -1.0}, {1.2, -1.0},
+		// 	{1.2, 0.8}, {0.9, 0.6}, {0.9, -0.5}, {0.3, 0}
+		// };
+		// std::vector<argos::CVector2> entryPath2 = {
+		// 	{-2.0, 0}, {-1.5, 0.0}, {-1.5, -1.0}, {-1.2, -1.0},
+		// 	{-1.2, 0.8}, {-0.9, 0.6}, {-0.9, -0.5}, {-0.3, 0}
+		// };
+		// std::vector<argos::CVector2> entryPath3 = {
+		// 	{0, 2.0}, {0.0, 1.5}, {1.0, 1.5}, {1.0, 1.2},
+		// 	{-0.8, 1.2}, {-0.6, 0.9}, {0.5, 0.9}, {0, 0.3}
+		// };
+		// std::vector<argos::CVector2> entryPath4 = {
+		// 	{0, -2.0}, {0.0, -1.5}, {1.0, -1.5}, {1.0, -1.2},
+		// 	{-0.8, -1.2}, {-0.6, -0.9}, {0.5, -0.9}, {0, -0.3}
+		// };
+		
+		// std::vector<argos::CVector2> entryPath1 = {{2.0, 0}, {1.0, 0}, {0.3, 0}};
+		// std::vector<argos::CVector2> entryPath2 = {{-2.0, 0}, {-1.0, 0}, {-0.3, 0}};
+		// std::vector<argos::CVector2> entryPath3 = {{0, 2.0}, {0, 1.0}, {0, 0.3}};
+		// std::vector<argos::CVector2> entryPath4 = {{0, -2.0}, {0, -1.0}, {0, -0.3}};
+		std::vector<argos::CVector2> entryPath1 = {
+			{2.0, 0.0}, 
+			{1.8, 0.5}, 
+			{1.5, 0.8}, 
+			{1.2, 0.6}, 
+			{1.1, 0.2},
+			{1.05, -0.2},
+			{0.8, -0.4},
+			{0.6, -0.2},
+			{0.3, 0}
+		};
+		std::vector<argos::CVector2> entryPath2 = {
+			{-2.0, 0.0}, 
+			{-1.8, 0.5}, 
+			{-1.5, 0.8}, 
+			{-1.2, 0.6}, 
+			{-1.1, 0.2},
+			{-1.05, -0.2},
+			{-0.8, -0.4},
+			{-0.6, -0.2},
+			{-0.3, 0}
+		};
+		std::vector<argos::CVector2> entryPath3 = {
+			{0.0, 2.0}, 
+			{-0.5, 1.8}, 
+			{-0.8, 1.5}, 
+			{-0.6, 1.2}, 
+			{-0.2, 1.1},
+			{0.2, 1.05},
+			{0.4, 0.8},
+			{0.2, 0.6},
+			{0, 0.3}
+		};
+		std::vector<argos::CVector2> entryPath4 = {
+			{0.0, -2.0}, 
+			{0.5, -1.8}, 
+			{0.8, -1.5}, 
+			{0.6, -1.2}, 
+			{0.2, -1.1},
+			{-0.2, -1.05},
+			{-0.4, -0.8},
+			{-0.2, -0.6},
+			{0, -0.3}
+		};
+						
+		int pointonpath;			
+		bool goingtoexit = false;
+		// std::vector<argos::CVector2> exitPath1 = {{0.3, 0.3}, {1.4, 1.4}};
+		// std::vector<argos::CVector2> exitPath2 = {{-0.3, -0.3}, {-1.4, -1.4}};
+		// std::vector<argos::CVector2> exitPath3 = {{-0.3, 0.3}, {-1.4, 1.4}};
+		// std::vector<argos::CVector2> exitPath4 = {{0.3, -0.3}, {1.4, -1.4}};
+		std::vector<argos::CVector2> exitPath1 = {{0.3, 0.3}, {1.8, 1.8}};
+		std::vector<argos::CVector2> exitPath2 = {{-0.3, -0.3}, {-1.8, -1.8}};
+		std::vector<argos::CVector2> exitPath3 = {{-0.3, 0.3}, {-1.8, 1.8}};
+		std::vector<argos::CVector2> exitPath4 = {{0.3, -0.3}, {1.8, -1.8}};
+		std::vector<argos::CVector2> actualExitPath;
+		bool followingEntryPath1 = false;
+		bool followingEntryPath2 = false;
+		bool followingEntryPath3 = false;
+		bool followingEntryPath4 = false;
+		argos::CRange<argos::Real> GoStraightAngleRangeInDegreesInRegion;
+		argos::CRange<argos::Real> GoStraightAngleRangeInDegreesGoingToRegion;
+
+		size_t stopCounter = 0; // Counter to track how many timesteps the robot has been stopped
+		std::vector<argos::CVector2> actualPath;	
+		CVector2 entrypoint;
+		int currentWaypointIndex = 2;
 		argos::CVector2 mainTarget; // this is to make the robot take the exit path but still save its initial target(site fidelity or random search)
 		bool goingtoentry = false;
 		

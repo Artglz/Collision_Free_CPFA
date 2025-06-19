@@ -138,16 +138,13 @@ void CPFA_qt_user_functions::DrawCircleOnArena() {
     Real y_coordinate = 0.0; // Y-coordinate of the circle's center
     Real elevation = 0.01;   // Elevation above the floor
 
-    /* Define the radius of the circle */
-    Real radius = 3;
+    // Real radius = 2.5; // Radius of the circle
+    Real radius = 2; // Radius of the circle
 
-    /* Define the color of the circle */
     CColor circleColor = CColor::RED;
 
-    /* Draw the circle */
     DrawCircle(CVector3(x_coordinate, y_coordinate, elevation), CQuaternion(), radius, circleColor, false);
 
-    /* Define the color of the "X" */
     CColor xColor = CColor::BLUE;
 
     /* Adjust the endpoints of the "X" to fit within the circle */
@@ -265,10 +262,12 @@ void CPFA_qt_user_functions::DrawTargetRays() {
 	//if(tock == 0) tock = 1;
 
 	//if(tick % tock == 0) {
-		for(size_t j = 0; j < loopFunctions.TargetRayList.size(); j++) {
-			DrawRay(loopFunctions.TargetRayList[j], loopFunctions.TargetRayColorList[j]);
-		}
-	//}
+			
+	for(size_t j = 0; j < loopFunctions.TargetRayList.size(); j++) {
+		DrawRay(loopFunctions.TargetRayList[j], loopFunctions.TargetRayColorList[j]);
+	}
+		
+	//}	
 }
 
 /*

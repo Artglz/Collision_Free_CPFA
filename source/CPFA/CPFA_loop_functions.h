@@ -23,6 +23,7 @@ using namespace std;
 
 static const size_t GENOME_SIZE = 7; // There are 7 parameters to evolve
 
+
 class CPFA_loop_functions : public argos::CLoopFunctions
 {
 
@@ -76,8 +77,61 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		double getRateOfSiteFidelity();
 		double getRateOfLayingPheromone();
 		double getRateOfPheromoneDecay();
-		std::vector<argos::CVector2> entryPoints = {{4, 0}, {-4, 0}, {0, 4}, {0, -4}}; // entry point of the paths
-		std::vector<argos::CVector2> exitPoints = {{2.8, 2.8}, {-2.8, 2.8}, {-2.8, 2.8}, {2.8, -2.8}}; // exit point of the paths
+		// std::vector<argos::CVector2> entryPoints = {{2.5, 0}, {-2.5, 0}, {0, 2.5}, {0, -2.5}}; // entry point of the paths
+		std::vector<argos::CVector2> entryPoints = {{2.0, 0}, {-2.0, 0}, {0, 2.0}, {0, -2.0}};
+		// std::vector<argos::CVector2> entryPoints = {
+		// 	{2.0, 0.0},
+		// 	{1.933, 0.167},
+		// 	{1.867, 0.333},
+		// 	{1.8, 0.5},
+		// 	{1.7, 0.6},
+		// 	{1.6, 0.7},
+		// 	{1.5, 0.8},
+		// 	{1.4, 0.733},
+		// 	{1.3, 0.667},
+		// 	{1.2, 0.6},
+		// 	{1.167, 0.467},
+		// 	{1.133, 0.333},
+		// 	{1.1, 0.2},
+		// 	{1.067, 0.067},
+		// 	{1.033, -0.067},
+		// 	{1.05, -0.2},
+		// 	{0.967, -0.267},
+		// 	{0.883, -0.333},
+		// 	{0.8, -0.4},
+		// 	{0.733, -0.333},
+		// 	{0.667, -0.267},
+		// 	{0.6, -0.2},
+		// 	{0.5, -0.133},
+		// 	{0.4, -0.067},
+		// 	{0.3, 0}
+		// };
+
+
+		// std::vector<argos::CVector2> entryPoints = {{}}
+		// std::vector<argos::CVector2> entryPoints = {{2.0, 0}};
+
+		// std::vector<argos::CVector2> entryPoints = {{2.0, 0}, {1.5, 0.0}, {1.5, -1.0}, {1.2, -1.0}, {1.2, 0.8}, {0.9, 0.6}, {0.9, -0.5}, {.3, 0}}; // entry point of the paths
+		// std::vector<argos::CVector2> exitPoints = {{0.3, 0.3},{-0.3, -0.3},{-0.3, 0.3}, {0.3, -0.3}}; // exit point of the paths
+		// std::vector<argos::CVector2> exitPoints = {{2.0, 0.0}, {1.65, 0.0}, {1.65, -1.0}, {1.3, -1.0}, {1.3, 1.0}, {0.95, 0.65}, {0.95, -0.65}, {.6, -0.3}, {.6, 0.3}, {.3, 0}}; // exit point of the paths
+		// std::vector<argos::CVector2> entryPoints = {{2.0, 0.0}, {1.3, -0.9}, {1.3, 0}, {1.3, 0.9}, {0.95, 0.55}, {0.95, 0.0}, {0.95, -0.55}, {.6, -0.2},{.6, 0.2}, {.3, 0}}; // exit point of the paths
+		// std::vector<argos::CVector2> entryPoints = {
+		// 	{2.0, 0.0}, 
+		// 	{1.8, 0.5}, 
+		// 	{1.5, 0.8}, 
+		// 	{1.2, 0.6}, 
+		// 	{1.1, 0.2},
+		// 	{1.05, -0.2},
+		// 	{0.8, -0.4},
+		// 	{0.6, -0.2}
+		// };
+		
+		//initialize 4 queues data type for each entry path
+		// std::queue<argos::CVector2> entryQueue1;
+		// std::queue<argos::CVector2> entryQueue2;
+		// std::queue<argos::CVector2> entryQueue3;
+		// std::queue<argos::CVector2> entryQueue4;
+
 
 	protected:
 
