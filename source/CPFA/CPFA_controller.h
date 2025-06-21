@@ -65,7 +65,8 @@ class CPFA_controller : public BaseController {
         
 		void SetCongestion(bool value);
 		std::vector<argos::CVector2> CongestionDropList;
-
+		int stopCounter = 0;
+		argos::CRange<argos::Real> GoStraightAngleRangeInDegreesInRegion;
 	private:
   string 			controllerID;//qilu 07/26/2016
 		CCI_DifferentialSteeringActuator* m_pcWheels; //defining wheels

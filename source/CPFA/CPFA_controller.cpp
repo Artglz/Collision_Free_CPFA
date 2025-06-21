@@ -30,6 +30,7 @@ CPFA_controller::CPFA_controller() :
         updateFidelity(false),
         last_time_in_seconds(0)
 {
+	GoStraightAngleRangeInDegreesInRegion.Set(-30.0, 30.0);
 }
 
 void CPFA_controller::Init(argos::TConfigurationNode &node) {
@@ -103,24 +104,33 @@ void CPFA_controller::ControlStep() {
 	*/
 
 	// Add line so we can draw the trail
-	curr_time_in_seconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond()); 
-     
-	if(curr_time_in_seconds - last_time_in_seconds >= 0)
-	{
-		CVector2 position2d(GetPosition().GetX(), GetPosition().GetY());
-		
-		CVector3 position3d(GetPosition().GetX(), GetPosition().GetY(), 0.00);
-		CVector3 target3d(previous_position.GetX(), previous_position.GetY(), 0.00);
-		CRay3 targetRay(target3d, position3d);
-		myTrail.push_back(targetRay);
-		LoopFunctions->Trajectory[controllerID].push_back(position2d);
-		//since it costs a lot of memeory, I commented it. qilu 06/2023. You can uncomment it if you want to show the trails.
-		LoopFunctions->TargetRayList.push_back(targetRay);
-		LoopFunctions->TargetRayColorList.push_back(TrailColor);
-		//argos::LOG<< "TargetRayList size =" << LoopFunctions->TargetRayList.size() <<endl;
-		previous_position = GetPosition();
-		last_time_in_seconds = curr_time_in_seconds;
-     }
+	if (CPFA_state == CONGESTED) {
+        TrailColor = CColor::RED; // Red for FOLLOWING_ENTRY_PATH
+    } 
+    else {
+        TrailColor = CColor::BLUE; // Default to blue for other states
+    }
+
+    // Add line to draw the trail only in the specified states
+    curr_time_in_seconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond());
+    if (curr_time_in_seconds - last_time_in_seconds >= 0) {
+        if (CPFA_state == CONGESTED) {
+            CVector2 position2d(GetPosition().GetX(), GetPosition().GetY());
+            CVector3 position3d(GetPosition().GetX(), GetPosition().GetY(), 0.00);
+            CVector3 target3d(previous_position.GetX(), previous_position.GetY(), 0.00);
+            CRay3 targetRay(target3d, position3d);
+            myTrail.push_back(targetRay);
+            LoopFunctions->Trajectory[controllerID].push_back(position2d);
+
+            // Add the ray to the global trail list
+            LoopFunctions->TargetRayList.push_back(targetRay);
+            LoopFunctions->TargetRayColorList.push_back(TrailColor);
+        }
+
+        // Update the previous position and time
+        previous_position = GetPosition();
+        last_time_in_seconds = curr_time_in_seconds;
+    }
 	//UpdateTargetRayList();
 	CPFA();
 	Move();
@@ -201,7 +211,23 @@ bool CPFA_controller::CollisionDetection() {
 	argos::CVector2 collisionVector = GetCollisionVector();
 	argos::Real collisionAngle = ToDegrees(collisionVector.Angle()).GetValue();
 	bool isCollisionDetected = false;
-	if(GoStraightAngleRangeInDegrees.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+    if (CPFA_state == CONGESTED) {
+        if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+            && collisionVector.Length() > 0.0) {
+				Stop();
+            stopCounter++; // Increment the stop counter
+            if (stopCounter > 75) {
+                // Resume movement after 200 timesteps
+                stopCounter = 0; // Reset the counter
+            }
+			Stop();
+            return true; // Keep the robot stopped
+        } else{
+			// Reset the stop counter if no collision is detected
+			stopCounter = 0;
+		}
+    }
+	else if(GoStraightAngleRangeInDegrees.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
 		 && collisionVector.Length() > 0.0) {
 
 		// if a robot is following a path, we dont want to avoid collisions since paths dont overlap. So there will be no

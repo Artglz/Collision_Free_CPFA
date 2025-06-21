@@ -72,7 +72,7 @@ include source/CPFA/CMakeFiles/CPFA_loop_functions.dir/progress.make
 # Include the compile flags for this target's objects.
 include source/CPFA/CMakeFiles/CPFA_loop_functions.dir/flags.make
 
-source/CPFA/CPFA_loop_functions_autogen/timestamp: /opt/homebrew/Cellar/qt/6.8.2_1/share/qt/libexec/moc
+source/CPFA/CPFA_loop_functions_autogen/timestamp: /opt/homebrew/Cellar/qt/6.9.0/share/qt/libexec/moc
 source/CPFA/CPFA_loop_functions_autogen/timestamp: source/CPFA/CMakeFiles/CPFA_loop_functions.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic MOC for target CPFA_loop_functions"
 	cd /Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/build/source/CPFA && /opt/homebrew/bin/cmake -E cmake_autogen /Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/build/source/CPFA/CMakeFiles/CPFA_loop_functions_autogen.dir/AutogenInfo.json Release
@@ -136,18 +136,8 @@ source/CPFA/libCPFA_loop_functions.dylib: source/CPFA/CMakeFiles/CPFA_loop_funct
 source/CPFA/libCPFA_loop_functions.dylib: source/CPFA/CMakeFiles/CPFA_loop_functions.dir/CPFA_loop_functions.cpp.o
 source/CPFA/libCPFA_loop_functions.dylib: source/CPFA/CMakeFiles/CPFA_loop_functions.dir/CPFA_qt_user_functions.cpp.o
 source/CPFA/libCPFA_loop_functions.dylib: source/CPFA/CMakeFiles/CPFA_loop_functions.dir/build.make
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libdl.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libpthread.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimage.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimageplus.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/liblua5.4.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libdl.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libpthread.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimage.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimageplus.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/liblua5.4.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libdl.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libpthread.tbd
+source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/usr/lib/libdl.tbd
+source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/usr/lib/libpthread.tbd
 source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimage.dylib
 source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimageplus.dylib
 source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/liblua5.4.dylib
@@ -156,20 +146,15 @@ source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libjsoncpp.26.dylib
 source/CPFA/libCPFA_loop_functions.dylib: source/Base/libBaseController.dylib
 source/CPFA/libCPFA_loop_functions.dylib: source/Base/libPheromone.dylib
 source/CPFA/libCPFA_loop_functions.dylib: source/Base/libNest.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.8.2_1/lib/QtOpenGLWidgets.framework/Versions/A/QtOpenGLWidgets
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.8.2_1/lib/QtWidgets.framework/Versions/A/QtWidgets
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.8.2_1/lib/QtOpenGL.framework/Versions/A/QtOpenGL
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.8.2_1/lib/QtGui.framework/Versions/A/QtGui
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.8.2_1/lib/QtCore.framework/Versions/A/QtCore
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libdl.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libpthread.tbd
+source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/usr/lib/libdl.tbd
+source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/usr/lib/libpthread.tbd
 source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimage.dylib
 source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimageplus.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/liblua5.4.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libdl.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/lib/libpthread.tbd
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimage.dylib
-source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/libfreeimageplus.dylib
+source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.9.0/lib/QtOpenGLWidgets.framework/Versions/A/QtOpenGLWidgets
+source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.9.0/lib/QtWidgets.framework/Versions/A/QtWidgets
+source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.9.0/lib/QtOpenGL.framework/Versions/A/QtOpenGL
+source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.9.0/lib/QtGui.framework/Versions/A/QtGui
+source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/Cellar/qt/6.9.0/lib/QtCore.framework/Versions/A/QtCore
 source/CPFA/libCPFA_loop_functions.dylib: /opt/homebrew/lib/liblua5.4.dylib
 source/CPFA/libCPFA_loop_functions.dylib: source/CPFA/CMakeFiles/CPFA_loop_functions.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/arturogonzalez/argos3/build_simulator/Collision_Free_CPFA/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX shared library libCPFA_loop_functions.dylib"
