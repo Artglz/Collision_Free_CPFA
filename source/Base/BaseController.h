@@ -57,6 +57,9 @@ class BaseController : public argos::CCI_Controller {
 		bool useTempRobotSpeed = false;
 	protected:
 
+		bool isRotating = false;
+		int rotationCooldown;
+		
 		argos::CRandom::CRNG* RNG;
 
 		unsigned int collision_counter;

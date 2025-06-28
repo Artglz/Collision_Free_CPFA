@@ -14,13 +14,13 @@ using namespace argos;
 BaseController::BaseController() :
 	LF(argos::CSimulator::GetInstance().GetLoopFunctions()),
 	WaitTime(0),
-	NestDistanceTolerance(0.01),
-	NestAngleTolerance(0.05),
-	TargetDistanceTolerance(0.01),
-	TargetAngleTolerance(0.04),
+	NestDistanceTolerance(0.1),
+	NestAngleTolerance(0.1),
+	TargetDistanceTolerance(0.1),
+	TargetAngleTolerance(0.1),
 	SearchStepSize(0.16),
 	RobotForwardSpeed(16.0),
-	RobotRotationSpeed(8.0),
+	RobotRotationSpeed(4.0),
 	TicksToWaitWhileMoving(0.0),
 	CurrentMovementState(STOP),
 	heading_to_nest(false),
@@ -108,7 +108,7 @@ void BaseController::SetTarget(argos::CVector2 t) {
 		x += noise_x;
 		y += noise_y;
 
-		//argos::LOG << "Not Heading to Nest " << std::endl;
+		// argos::LOG << "Not Heading to Nest " << std::endl;
 		//argos::LOG << "Noise x: "<< noise_x << std::endl;
 		//argos::LOG << "Noise y:" << noise_y << std::endl;
 	} else {
@@ -127,9 +127,11 @@ void BaseController::SetTarget(argos::CVector2 t) {
 
 	TargetPosition = argos::CVector2(x, y);
 	argos::Real distanceToTarget = (TargetPosition - GetPosition()).Length();
-	
-	//argos::LOG << "Distance: " << distanceToTarget << std::endl;
-	//argos::LOG << "<<New Target Set>>" << std::endl;
+	// if( GetId() == "F08"){
+	// argos::LOG << "Distance: " << distanceToTarget << std::endl;
+	// argos::LOG << "<<New Target Set>>" << std::endl;
+	// argos::LOG << GetId() << " Target Position: " << TargetPosition.GetX() << ", " << TargetPosition.GetY() << std::endl;
+	// }
 }
 
 void BaseController::SetStartPosition(argos::CVector3 sp) {
@@ -375,6 +377,14 @@ void BaseController::Move() {
 	// 	RobotForwardSpeed = 16.0f;
 	// }
  //double randomNumber = RNG->Uniform(argos::CRange<double>(0.0, 1.0));//qilu 09/24/2016
+
+	if (CurrentMovementState == LEFT || CurrentMovementState == RIGHT) {
+		rotationCooldown = 60;
+		isRotating = true; // Robot is rotating
+	} else {
+		rotationCooldown -= 1;
+		isRotating = false; // Robot is not rotating
+	}
 	/* move based on the movement state flag */
 	switch(CurrentMovementState) {
 

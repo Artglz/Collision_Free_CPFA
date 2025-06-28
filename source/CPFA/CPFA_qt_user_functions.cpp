@@ -92,6 +92,9 @@ void CPFA_qt_user_functions::DrawOnArena(CFloorEntity& entity) {
 	DrawEntryPoint();
 	DrawCircleOnArena();
 
+	DrawPaths();
+	// DrawExitPath2();
+
 	if(loopFunctions.DrawTargetRays == 1) DrawTargetRays();
 }
 
@@ -129,6 +132,58 @@ void CPFA_qt_user_functions::DrawNest() {
 
         /* Draw the nest on the arena */
         DrawCylinder(nest_3d, CQuaternion(), loopFunctions.NestRadius, 0.008, CColor::GREEN);
+    }
+}
+
+void CPFA_qt_user_functions::DrawExitPath2() {
+    // Iterate over the points in exitPath2
+    for (const auto& point : exitPath2) {
+        // Get the coordinates of the point
+        Real x_coordinate = point.GetX();
+        Real y_coordinate = point.GetY();
+        Real elevation = 0.01; // Slight elevation above the floor
+
+        // Define the 3D position of the point
+        CVector3 point_3d(x_coordinate, y_coordinate, elevation);
+
+        // Draw the point as a cylinder with radius 0.25
+        DrawCylinder(point_3d, CQuaternion(), 0.17, 0.01, CColor::BLUE);
+    }
+}
+
+void CPFA_qt_user_functions::DrawPaths() {
+    // Define colors for each path
+    CColor path1Color = CColor::RED;
+    CColor path2Color = CColor::RED;
+    CColor path3Color = CColor::RED;
+    CColor path4Color = CColor::RED;
+
+    // Draw entryPath1
+    for (size_t i = 0; i < entryPath1.size() - 1; ++i) {
+        CRay3 ray(CVector3(entryPath1[i].GetX(), entryPath1[i].GetY(), 0.01),
+                  CVector3(entryPath1[i + 1].GetX(), entryPath1[i + 1].GetY(), 0.01));
+        DrawRay(ray, path1Color, 1.0);
+    }
+
+    // Draw entryPath2
+    for (size_t i = 0; i < entryPath2.size() - 1; ++i) {
+        CRay3 ray(CVector3(entryPath2[i].GetX(), entryPath2[i].GetY(), 0.01),
+                  CVector3(entryPath2[i + 1].GetX(), entryPath2[i + 1].GetY(), 0.01));
+        DrawRay(ray, path2Color, 1.0);
+    }
+
+    // Draw entryPath3
+    for (size_t i = 0; i < entryPath3.size() - 1; ++i) {
+        CRay3 ray(CVector3(entryPath3[i].GetX(), entryPath3[i].GetY(), 0.01),
+                  CVector3(entryPath3[i + 1].GetX(), entryPath3[i + 1].GetY(), 0.01));
+        DrawRay(ray, path3Color, 1.0);
+    }
+
+    // Draw entryPath4
+    for (size_t i = 0; i < entryPath4.size() - 1; ++i) {
+        CRay3 ray(CVector3(entryPath4[i].GetX(), entryPath4[i].GetY(), 0.01),
+                  CVector3(entryPath4[i + 1].GetX(), entryPath4[i + 1].GetY(), 0.01));
+        DrawRay(ray, path4Color, 1.0);
     }
 }
 

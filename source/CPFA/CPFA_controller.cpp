@@ -32,6 +32,8 @@ CPFA_controller::CPFA_controller() :
 {
 	GoStraightAngleRangeInDegreesInRegion.Set(-30.0, 30.0);
 	GoStraightAngleRangeInDegreesGoingToRegion.Set(-55.0, 55.0);
+	GoStraightAngleRangeInDegreesLeftSide.Set(-90.0, -30.0);
+	GoStraightAngleRangeInDegreesRightSide.Set(30.0, 90.0);
 }
 
 void CPFA_controller::Init(argos::TConfigurationNode &node) {
@@ -115,18 +117,18 @@ void CPFA_controller::ControlStep() {
     // Add line to draw the trail only in the specified states
     curr_time_in_seconds = (argos::Real)(SimulationTick() / SimulationTicksPerSecond());
     if (curr_time_in_seconds - last_time_in_seconds >= 0) {
-        if (CPFA_state == FOLLOWING_ENTRY_PATH || CPFA_state == FOLLOWING_EXIT_PATH) {
-            CVector2 position2d(GetPosition().GetX(), GetPosition().GetY());
-            CVector3 position3d(GetPosition().GetX(), GetPosition().GetY(), 0.00);
-            CVector3 target3d(previous_position.GetX(), previous_position.GetY(), 0.00);
-            CRay3 targetRay(target3d, position3d);
-            myTrail.push_back(targetRay);
-            LoopFunctions->Trajectory[controllerID].push_back(position2d);
+        // if (CPFA_state == FOLLOWING_ENTRY_PATH || CPFA_state == FOLLOWING_EXIT_PATH) {
+        //     CVector2 position2d(GetPosition().GetX(), GetPosition().GetY());
+        //     CVector3 position3d(GetPosition().GetX(), GetPosition().GetY(), 0.00);
+        //     CVector3 target3d(previous_position.GetX(), previous_position.GetY(), 0.00);
+        //     CRay3 targetRay(target3d, position3d);
+        //     myTrail.push_back(targetRay);
+        //     LoopFunctions->Trajectory[controllerID].push_back(position2d);
 
-            // Add the ray to the global trail list
-            LoopFunctions->TargetRayList.push_back(targetRay);
-            LoopFunctions->TargetRayColorList.push_back(TrailColor);
-        }
+        //     // Add the ray to the global trail list
+        //     LoopFunctions->TargetRayList.push_back(targetRay);
+        //     LoopFunctions->TargetRayColorList.push_back(TrailColor);
+        // }
 
         // Update the previous position and time
         previous_position = GetPosition();
@@ -148,8 +150,9 @@ void CPFA_controller::ControlStep() {
 	Move();
 
 	// if (GetTarget().GetX() == 0.0 && GetTarget().GetY() == 0.0) {
-	// 	argos::LOG << "ENTRY Robot: " << GetId() << " is at target (0,0) on exit path." << std::endl;
+	// 	argos::LOG << "ERobot: " << GetId() << " is at target (0,0) on exit path with status " << GetStatus() << std::endl;
 	// }
+
 }
 
 void CPFA_controller::Reset() {
@@ -245,27 +248,126 @@ bool CPFA_controller::CollisionDetection() {
 	bool isCollisionDetected = false;
 	
 	// this is the normal collision logic where a robot determines a where it is colliding with another robot and the turn it must take.
-	if(goingtoentry){
+	// if(goingtoentry){
+	// 	if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+	// 	&& collisionVector.Length() > 0.0) {
+	// 		return true;
+	// 	}else{
+	// 		return false;
+	// 	}
+	// }
+
+	// if(GetStatus() == "RETURNING" && inCentralZone() && goingtoentry){
+	// 	if (isLeft) {
+	// 		// Obstacle on the right side only matters
+	// 		if (GoStraightAngleRangeInDegreesLeftSide.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+    //         && collisionVector.Length() > 0.0) {
+	// 			// Stop();
+	// 			return true;
+	// 		}else{
+	// 			return false;
+	// 		}
+	// 	} else {
+	// 		// Obstacle on the left side only matters
+	// 		if (GoStraightAngleRangeInDegreesRightSide.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+    //         && collisionVector.Length() > 0.0) {
+	// 			// Stop();
+	// 			return true;
+	// 		}else{
+	// 			return false;
+	// 		}
+	// 	}		
+	// }
+	// if(GetStatus() == "RETURNING" && inCentralZone() && goingtoentry){
+
+    //     // if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+    //     //     && collisionVector.Length() > 0.0) {
+	// 	// 		stopCounter++; // Increment the stop counter
+	// 	// 		if (stopCounter > 10) {
+	// 	// 			// Resume movement after 200 timesteps
+	// 	// 			// argos::LOG << GetId() << " - Resuming movement after collision." << std::endl;
+	// 	// 			stopCounter = 0; // Reset the counter
+	// 	// 		}
+	// 	// 		else{
+	// 	// 			Stop();
+	// 	// 		}
+	// 	// }
+
+	// 	if (isLeft) {
+	// 		// Obstacle on the right side only matters
+	// 		if (GoStraightAngleRangeInDegreesLeftSide.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+	// 			&& collisionVector.Length() > 0.0) {
+	// 			return true;
+	// 		} else {
+	// 			return false;
+	// 		}
+	// 	} else {
+	// 		// Obstacle on the left side only matters
+	// 		if (GoStraightAngleRangeInDegreesRightSide.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+	// 			&& collisionVector.Length() > 0.0) {
+	// 			return true;
+	// 		} else {
+	// 			return false;
+	// 		}
+	// 	}
+	// }
+
+	if (GetStatus() == "RETURNING" && inCentralZone()) {
+        if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+            && collisionVector.Length() > 0.0) {
+			//stop for only one second
+			if(stopCounter < 32){
+				Stop();
+
+			};
+			stopCounter++;
+			return true;
+		}else{
+			// stopCounter = 0;
+			return false;
+		}
+
+	}
+	if(GetStatus() == "FOLLOWING_EXIT_PATH"){
 		if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
 		&& collisionVector.Length() > 0.0) {
 		return true;
+		} else {
+			return false;
 		}
 	}
     if (GetStatus() == "FOLLOWING_ENTRY_PATH" || GetStatus() == "FOLLOWING_EXIT_PATH") {
         if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
             && collisionVector.Length() > 0.0) {
-				Stop();
-            stopCounter++; // Increment the stop counter
-            if (stopCounter > 75) {
-                // Resume movement after 200 timesteps
-                stopCounter = 0; // Reset the counter
-            }
 			Stop();
-            return true; // Keep the robot stopped
+			return true;
+		// 	if(rotationCooldown >= 0) {
+		// 		argos::LOG <<  GetId() << " there is a collision but the robot is cooling down from a rotation: " << rotationCooldown << std::endl;
+		// 		return true;
+		// 	} else{
+		// 		Stop();
+		// 		return true;
+		// 	}
+
+        //     // stopCounter++; // Increment the stop counter
+		// 	// argos::LOG << GetId() << " - Collision detected while following path." << std::endl;
+        //     // if (stopCounter > 10) {
+        //     //     // Resume movement after 200 timesteps
+		// 	// 	// argos::LOG << GetId() << " - Resuming movement after collision." << std::endl;
+        //     //     stopCounter = 0; // Reset the counter
+		// 	// 	return true;
+        //     // }
+		// 	// else{
+		// 	// 	Stop();
+		// 	// 	return true;
+		// 	// }
+		// 	// return true;
         } else{
 			// Reset the stop counter if no collision is detected
-			stopCounter = 0;
+			//stopCounter = 0;
+			return false;
 		}
+
     }
 
 
@@ -288,6 +390,7 @@ bool CPFA_controller::CollisionDetection() {
 			// if(goingtoentry) {
 			// 	return isCollisionDetected;
 			// }	 
+			
 			Stop();
 
 	
@@ -311,6 +414,44 @@ bool CPFA_controller::CollisionDetection() {
 		return isCollisionDetected;
 	}
 }
+
+
+/* Attempting to perform avoidance logic for robots to find open slot in path*/
+
+bool CPFA_controller::IsLeftOfLine(const argos::CVector2& A, const argos::CVector2& B, const argos::CVector2& P) {
+	// argos::LOG << "IsLeftOfLine called with A: " << A << ", B: " << B << ", P: " << P << std::endl;
+    Real side = (B.GetX() - A.GetX()) * (P.GetY() - A.GetY()) -
+                (B.GetY() - A.GetY()) * (P.GetX() - A.GetX());
+    return side > 0; // left = true, right = false
+}
+Real CPFA_controller::DistanceFromPointToSegment(const argos::CVector2& P, const argos::CVector2& A, const argos::CVector2& B) {
+	// argos::LOG << "DistanceFromPointToSegment called with P: " << P << ", A: " << A << ", B: " << B << std::endl;
+    argos::CVector2 AB = B - A;
+    argos::CVector2 AP = P - A;
+
+	Real t = (AB.DotProduct(AP)) / (AB.SquareLength());
+	t = std::max(0.0, std::min(1.0, t)); // Clamp to segment
+
+    argos::CVector2 closest = A + AB * t;
+    return (P - closest).Length();
+}
+bool CPFA_controller::IsLeftOfPath(const std::vector<argos::CVector2>& path, const argos::CVector2& pos) {
+	// argos::LOG << "IsLeftOfPath called with path size: " << path.size() << std::endl;
+
+    Real min_dist = std::numeric_limits<Real>::max();
+    size_t best_index = 0;
+
+    for(size_t i = 0; i < path.size() - 1; ++i) {
+        Real dist = DistanceFromPointToSegment(pos, path[i], path[i+1]);
+        if(dist < min_dist) {
+            min_dist = dist;
+            best_index = i;
+        }
+    }
+
+    return IsLeftOfLine(path[best_index], path[best_index + 1], pos);
+}
+
 
 
 void CPFA_controller::SetLoopFunctions(CPFA_loop_functions* lf) {
@@ -457,24 +598,31 @@ void CPFA_controller::FollowingEntryPath() {
 			LoopFunctions->setScore(num_targets_collected);
 		}
 
-		// Choose the best intermediate step (closest of 4-adjacent)
-		//mainTarget = GetTarget();
-		// argos::CVector2 currentPos = GetPosition();
-
-		// std::vector<argos::CVector2> candidates = LoopFunctions->exitPoints;
-
-		// argos::CVector2 bestStep = candidates[0];
-		// Real bestDistance = (mainTarget - bestStep).Length();
-
-		// for (size_t i = 1; i < candidates.size(); ++i) {
-		// 	Real dist = (mainTarget - candidates[i]).Length();
-		// 	if (dist < bestDistance) {
-		// 		bestDistance = dist;
-		// 		bestStep = candidates[i];
-		// 	}
+		// if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
+		//     SetIsHeadingToNest(false);
+		//     SetTarget(SiteFidelityPosition);
+		// 	LOG << GetId() << " is using site fidelity at position: " << SiteFidelityPosition << std::endl;
+		//     isInformed = true;
+		// }
+		// else if (SetTargetPheromone()) {
+		// 	LOG << GetId() << " is using pheromone at position: " << GetTarget() << std::endl;
+		//     isInformed = true;
+		//     isUsingSiteFidelity = false;
+		// }
+		// else {
+		//     SetRandomSearchLocation();
+		//     isInformed = false;
+		//     isUsingSiteFidelity = false;
+		// 	useRandomSearch = true;
+		// 	LOG << GetId() << " is using random search at position: " << GetTarget() << std::endl;
 		// }
 
-		// Set intermediate target first
+
+		// mainTarget = GetTarget();
+
+		/*
+		This is for choosing the same exit path for consitency.
+		*/
 		if(followingEntryPath1){
 			SetTarget(exitPath1[0]);
 			followingEntryPath1 = false;
@@ -492,8 +640,43 @@ void CPFA_controller::FollowingEntryPath() {
 			followingEntryPath4 = false;
 			actualExitPath = exitPath4;
 		} 
+
+
+		/* 
+		This is for choosing the exit path that is closest to next destination.
+		*/
+
+		// Choose the best intermediate step (closest of 4-adjacent)
+		
+
+		// argos::CVector2 bestStep = exitPoints[0];
+		// Real bestDistance = (mainTarget - bestStep).Length();
+
+		// for (size_t i = 1; i < exitPoints.size(); ++i) {
+		// 	Real dist = (mainTarget - exitPoints[i]).Length();
+		// 	if (dist < bestDistance) {
+		// 		bestDistance = dist;
+		// 		bestStep = exitPoints[i];
+		// 	}
+		// }
+
+		// if(bestStep == exitPath1[1]){
+		// 	actualExitPath = exitPath1;
+		// 	followingEntryPath1 = false;
+		// } else if(bestStep == exitPath2[1]) {
+		// 	actualExitPath = exitPath2;
+		// 	followingEntryPath2 = false;
+		// } else if(bestStep == exitPath3[1]) {
+		// 	actualExitPath = exitPath3;
+		// 	followingEntryPath3 = false;
+		// } else if(bestStep == exitPath4[1]) {
+		// 	actualExitPath = exitPath4;
+		// 	followingEntryPath4 = false;
+		// }
 		// argos::LOG << "Robot: " << GetId() << " reached the nest and is now following the exit path to: "
-		// 	<< bestStep.GetX() << ", " << bestStep.GetY() << std::endl;
+		// 	<< actualExitPath[0] << std::endl;
+		// SetTarget(actualExitPath[0]);
+
 		isHoldingFood = false; 
 		isGivingUpSearch = false;
         travelingTime+=SimulationTick()-startTime;//qilu 10/22
@@ -522,10 +705,11 @@ void CPFA_controller::FollowingExitPath() {
 	if (IsAtTarget()) {
 		//argos::LOG << "Reached intermediate target on exit path..." << std::endl;
         SetTarget(actualExitPath[1]);
+		actualExitPath.clear();
 		goingtoexit = true;
     }
 
-	if(goingtoexit && IsAtTarget()){
+	if(goingtoexit && ((GetPosition() - GetTarget()).Length() < EntryPointThreshold)){
 		//Decide next search strategy (pheromone/site fidelity/random)
 		if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
 		    SetIsHeadingToNest(false);
@@ -542,8 +726,19 @@ void CPFA_controller::FollowingExitPath() {
 		    isUsingSiteFidelity = false;
 		}
 
-		CPFA_state = DEPARTING;   
+		// argos::LOG << GetId() <<  " Going to main target: " << mainTarget << std::endl;
 
+		
+		// if (GetTarget().GetX() == 0.0 && GetTarget().GetY() == 0.0) {
+		// 	argos::LOG << "EXIT Robot: " << GetId() << " is at " << GetTarget() << " on exit path." << std::endl;
+		// 	SetRandomSearchLocation();
+		// 	argos::LOG << "Robot: " << GetId() << " is using random search at position: " << GetTarget() << std::endl;
+		// }else{
+		// 	SetTarget(mainTarget);
+		// }
+
+		CPFA_state = DEPARTING;   
+		goingtoexit = false;
 	}
 }
 
@@ -562,8 +757,10 @@ void CPFA_controller::Searching() {
 		argos::CVector2 direction = GetPosition() - m_cCircleCenter;
 		direction.Normalize();
 		argos::CVector2 escape_target = GetPosition() + direction * SearchStepSize;
-	
+		
 		SetTarget(escape_target);
+		argos::LOG << GetId() << " is inside the circle boundary and escaping to: " 
+			<< escape_target.GetX() << ", " << escape_target.GetY() << std::endl;
 		return; 
 	}
 	// When not carrying food, calculate movement.
@@ -581,7 +778,6 @@ void CPFA_controller::Searching() {
              SetFidelityList();
 	         TrailToShare.clear();
              SetIsHeadingToNest(true);
-             //SetTarget(LoopFunctions->NestPositions[1]);
 			//  entrypoint = FindClosestEntryPoint();
 			 entrypoint = FindClosestNest();
 			//  argos::LOG << "Robot: " << GetId() << " is giving up searching and going to entry point: "
@@ -659,6 +855,7 @@ void CPFA_controller::Searching() {
           */
           SetIsHeadingToNest(false);
           //SetTarget(turn_vector + GetPosition());
+		  //argos::LOG << GetId() << " is turning away from nest" << std::endl;
 		  SetTarget(SafeTargetFromHeading(turn_angle, SearchStepSize));
 
          }
@@ -740,30 +937,30 @@ void CPFA_controller::Surveying() {
 	// Set the survey countdown
 	else {
 		SetIsHeadingToNest(false); // Turn on error for this
-		entrypoint = FindClosestEntryPoint();
-		// entrypoint = FindClosestNest();
+		// entrypoint = FindClosestEntryPoint();
+		entrypoint = FindClosestNest();
 		// argos::LOG << "Robot: " << GetId() << " is finished surveying and going to entry point: "
 		// 	<< entrypoint.GetX() << ", " << entrypoint.GetY() << std::endl;
 		if (entrypoint == LoopFunctions->NestPositions[1]) {
-			argos::LOG << "Robot: " << GetId() << " set following entry path 1." << std::endl;
+			// argos::LOG << "Robot: " << GetId() << " set following entry path 1." << std::endl;
 			actualPath = entryPath1;
 			// SetTarget(entryPath1[1]);
 			followingEntryPath1 = true;
 			//SetTarget(LoopFunctions->NestPositions[1]);
 		} else if (entrypoint == LoopFunctions->NestPositions[3]) {
-			argos::LOG << "Robot: " << GetId() << " set following entry path 2." << std::endl;
+			// argos::LOG << "Robot: " << GetId() << " set following entry path 2." << std::endl;
 			// SetTarget(entryPath2[1]);
 			actualPath = entryPath2;
 			followingEntryPath2 = true;
 			// SetTarget(LoopFunctions->NestPositions[3]);
 		} else if (entrypoint == LoopFunctions->NestPositions[0]) {
-			argos::LOG << "Robot: " << GetId() << " set following entry path 3." << std::endl;
+			// argos::LOG << "Robot: " << GetId() << " set following entry path 3." << std::endl;
 			// SetTarget(entryPath3[1]);
 			actualPath = entryPath3;
 			followingEntryPath3 = true;
 			//SetTarget(LoopFunctions->NestPositions[0]);
 		} else if (entrypoint == LoopFunctions->NestPositions[2]) {
-			argos::LOG << "Robot: " << GetId() << " set following entry path 4." << std::endl;
+			// argos::LOG << "Robot: " << GetId() << " set following entry path 4." << std::endl;
 			// SetTarget(entryPath4[1]);
 			actualPath = entryPath4;
 			followingEntryPath4 = true;
@@ -782,65 +979,132 @@ void CPFA_controller::Surveying() {
 }
 
 void CPFA_controller::Returning() {
+	if(!hasExecutedOnce){
+		if(runningfromcorridor ){
+			if(IsAtTarget()){
+				hasExecutedOnce = true;
+				runningfromcorridor = false;
+				SetTarget(entrypoint);
+				LOG << "Going to target: " << GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
 
-	// if((IsAtTarget() && goingtoentry) && CollisionDetection()) {
-	// 	pointonpath -= 1;
-	// 	SetTarget(actualPath[pointonpath]);
-	// } else if(IsAtTarget() && goingtoentry) {
-	// 	CPFA_state = FOLLOWING_ENTRY_PATH;
-	// 	currentWaypointIndex = pointonpath;
-	// 	goingtoentry = false;
-	// 	return;
-	// }
+			}
 
-	// if (IsInTheNest()) {
-	// 	if (isHoldingFood) {
-	// 		num_targets_collected++;
-	// 		LoopFunctions->currNumCollectedFood++;
-	// 		LoopFunctions->setScore(num_targets_collected);
-	// 	}
+			return;
+		}
+		else if(IsInsideRestrictedExitCorridor(GetPosition())) {
+			Stop();
+			SetIsHeadingToNest(false);
+		
+			LOG << "Robot: " << GetId() << " is in restricted corridor. Original target: "
+				<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
+		
+			// Determine deflection direction based on robot's position
+			CRadians baseAngle = (CVector2(0, 0) - GetPosition()).Angle(); // Angle from robot to center
+			CRadians deflection = (GetPosition().GetX() >= 0) ? CRadians::PI / 2 : -CRadians::PI / 2;
+		
+			CRadians deflectedAngle = baseAngle + deflection;
+			CVector2 escapeVec(SearchStepSize * 3.0, deflectedAngle);
+		
+			SetTarget(GetPosition() + escapeVec);
+			runningfromcorridor = true;
+			
+			LOG << "Robot: " << GetId() << " redirected to target: "
+				<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
+			return;
+		}
+	}
 
-	// 	// Set intermediate target first
+	// if(inCentralZone()){
+	// 	argos::CVector2 robotPos = GetPosition();
 	// 	if(followingEntryPath1){
-	// 		SetTarget(exitPath1[0]);
-	// 		followingEntryPath1 = false;
-	// 		actualExitPath = exitPath1;
-	// 	} else if(followingEntryPath2) {
-	// 		SetTarget(exitPath2[0]);
-	// 		followingEntryPath2 = false;
-	// 		actualExitPath = exitPath2;
-	// 	} else if(followingEntryPath3) {
-	// 		SetTarget(exitPath3[0]);
-	// 		followingEntryPath3 = false;
-	// 		actualExitPath = exitPath3;
-	// 	} else if(followingEntryPath4) {
-	// 		SetTarget(exitPath4[0]);
-	// 		followingEntryPath4 = false;
-	// 		actualExitPath = exitPath4;
-	// 	} 
-	// 	// argos::LOG << "Robot: " << GetId() << " reached the nest and is now following the exit path to: "
-	// 	// 	<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
-	// 	// argos::LOG << "Robot: " << GetId() << " reached the nest and is now following the exit path to: "
-	// 	// 	<< bestStep.GetX() << ", " << bestStep.GetY() << std::endl;
-	// 	isHoldingFood = false; 
+	// 		isLeft = IsLeftOfPath(entryPath1, robotPos);
+	// 	}else if(followingEntryPath2){
+	// 		isLeft = IsLeftOfPath(entryPath2, robotPos);
+	// 	}else if(followingEntryPath3){
+	// 		isLeft = IsLeftOfPath(entryPath3, robotPos);
+	// 	}else if(followingEntryPath4){
+	// 		isLeft = IsLeftOfPath(entryPath4, robotPos);
+	// 	}
+		
+	// 	// if(isLeft) {
+	// 	// 	argos::LOG << "Robot" << GetId() << " is to the LEFT of the path" << std::endl;
+	// 	// } else {
+	// 	// 	argos::LOG << "Robot" << GetId() << " is to the RIGHT of the path." << std::endl;
+	// 	// }
+	// }
+	
+	// if(!isHoldingFood && inCentralZone()){
+	// 	// argos::LOG << GetId() << " reached the radius and is now doing random search..." << std::endl;
+	// 	CPFA_state = SEARCHING; 
 	// 	isGivingUpSearch = false;
-    //     travelingTime+=SimulationTick()-startTime;//qilu 10/22
-    //     startTime = SimulationTick();//qilu 10/22		
-	// 	CPFA_state = FOLLOWING_EXIT_PATH;
-	// 	currentWaypointIndex = 2;
-	// 	actualPath.clear();
+	// 	isInformed = false;
+	// 	isUsingSiteFidelity = false;
+	// 	Stop();
+	// 	SearchTime = 0;
+	// 	CPFA_state = SEARCHING;
+	// 	travelingTime+=SimulationTick()-startTime;//qilu 10/22
+	// 	startTime = SimulationTick();//qilu 10/22
+   
+	// 	argos::Real USV = LoopFunctions->UninformedSearchVariation.GetValue();
+	// 	argos::Real rand = RNG->Gaussian(USV);
+	// 	argos::CRadians rotation(rand);
+	// 	argos::CRadians angle1(rotation.UnsignedNormalize());
+	// 	argos::CRadians angle2(GetHeading().UnsignedNormalize());
+	// 	argos::CRadians turn_angle(angle1 + angle2);
+	// 	argos::CVector2 turn_vector(SearchStepSize, turn_angle);
+	// 	SetIsHeadingToNest(false);
+	// 	SetTarget(turn_vector + GetPosition());
 	// 	return;
 	// }
 
-	// // if there is a collision
-	// 	// get closest point on path and go to it
-	// 	// if no robot is detect to the right/left while going to this waypoint, then jump in here
-	// 	    // for this approach 2 entryPaths are necessary(one with many waypoints and one with less waypoints)
+
 	
+
+	/* This is in case the robot actually reaches the nest directly (No Path) */
+	if (IsInTheNest()) {
+		if (isHoldingFood) {
+			num_targets_collected++;
+			LoopFunctions->currNumCollectedFood++;
+			LoopFunctions->setScore(num_targets_collected);
+		}
+
+		// Set intermediate target first
+		if(followingEntryPath1){
+			SetTarget(exitPath1[0]);
+			followingEntryPath1 = false;
+			actualExitPath = exitPath1;
+		} else if(followingEntryPath2) {
+			SetTarget(exitPath2[0]);
+			followingEntryPath2 = false;
+			actualExitPath = exitPath2;
+		} else if(followingEntryPath3) {
+			SetTarget(exitPath3[0]);
+			followingEntryPath3 = false;
+			actualExitPath = exitPath3;
+		} else if(followingEntryPath4) {
+			SetTarget(exitPath4[0]);
+			followingEntryPath4 = false;
+			actualExitPath = exitPath4;
+		} 
+		argos::LOG << "Robot: " << GetId() << " reached the nest and is now following the exit path to: "
+			<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
+
+		isHoldingFood = false; 
+		isGivingUpSearch = false;
+        travelingTime+=SimulationTick()-startTime;//qilu 10/22
+        startTime = SimulationTick();//qilu 10/22		
+		CPFA_state = FOLLOWING_EXIT_PATH;
+		hasExecutedOnce = false;
+		currentWaypointIndex = 2;
+		actualPath.clear();
+		return;
+	}
+	
+	/* if there is a collision, determine which path you are on and get on closest point on path and go to it*/
 	// if(CollisionDetection() && inCentralZone() && !goingtoentry){
 	// 	if(followingEntryPath1){
 	// 		pointonpath = FindClosestForwardWaypoint(entryPath1);
-	// 			actualPath = entryPath1;
+	// 		actualPath = entryPath1;
 	// 	} else if (followingEntryPath2) {
 	// 		pointonpath = FindClosestForwardWaypoint(entryPath2);
 	// 		actualPath = entryPath2;
@@ -851,62 +1115,164 @@ void CPFA_controller::Returning() {
 	// 		pointonpath = FindClosestForwardWaypoint(entryPath4);
 	// 		actualPath = entryPath4;
 	// 	}
+
+
+	// 	isLeft = IsLeftOfPath(actualPath, GetPosition());
+	// 	argos::CVector2 A = actualPath[pointonpath];
+	// 	argos::CVector2 B = actualPath[std::min(static_cast<size_t>(pointonpath + 1), actualPath.size() - 1)];	
+	// 	// Side-following direction (change 'isLeft' logic if needed)
+	// 	argos::CVector2 shifted = OffsetToSide(A, B, 0.15, isLeft);
+	// 	SetTarget(shifted);
+
+
 	// 	// argos::LOG << "Collision detected while returning to nest. Closest waypoint on path: " << pointonpath << std::endl;
-	// 	SetTarget(actualPath[pointonpath]);
+	// 	// SetTarget(actualPath[pointonpath]);
 	// 	goingtoentry = true;
 	// }
 
-	if(!IsHoldingFood() && inCentralZone()){
-		if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
-		    SetIsHeadingToNest(false);
-		    SetTarget(SiteFidelityPosition);
-		    isInformed = true;
-		}
-		else if (SetTargetPheromone()) {
-		    isInformed = true;
-		    isUsingSiteFidelity = false;
-		}
-		else {
-		    SetRandomSearchLocation();
-		    isInformed = false;
-		    isUsingSiteFidelity = false;
-		}
 
-		CPFA_state = DEPARTING;   		
-	}
-
-	if ((GetPosition() - entrypoint).Length() < EntryPointThreshold){
-
-		if (entrypoint == LoopFunctions->entryPoints[0]) {
-			actualPath = entryPath1;
-			SetTarget(entryPath1[1]);
-			followingEntryPath1 = true;
-			//SetTarget(LoopFunctions->NestPositions[1]);
-		} else if (entrypoint == LoopFunctions->entryPoints[1]) {
-			SetTarget(entryPath2[1]);
-			actualPath = entryPath2;
-			followingEntryPath2 = true;
-			// SetTarget(LoopFunctions->NestPositions[3]);
-		} else if (entrypoint == LoopFunctions->entryPoints[2]) {
-			SetTarget(entryPath3[1]);
-			actualPath = entryPath3;
-			followingEntryPath3 = true;
-			//SetTarget(LoopFunctions->NestPositions[0]);
-		} else if (entrypoint == LoopFunctions->entryPoints[3]) {
-			SetTarget(entryPath4[1]);
-			actualPath = entryPath4;
-			followingEntryPath4 = true;
-			// SetTarget(LoopFunctions->NestPositions[2]);
-		}
-
-		goingtoentry = false;
-		CPFA_state = FOLLOWING_ENTRY_PATH;
-	}
+	/* This covers the case when the robot is trying to find an open slot in the path, if the slot is taken then it goes to the next point, else you join the path */
+	// if(IsAtTarget() && goingtoentry && CollisionDetection()) {
+	// 	pointonpath -= 1;
+	// 	SetTarget(actualPath[pointonpath]);
+	// } else if(IsAtTarget() && goingtoentry && !CollisionDetection()) {
+	// 	argos::LOG << GetId() << " is succesfully entering at " << actualPath[pointonpath] << std::endl;
+	// 	CPFA_state = FOLLOWING_ENTRY_PATH;
+	// 	currentWaypointIndex = pointonpath;
+	// 	goingtoentry = false;
+	// 	return;
+	// }
 
 
+	// if(IsAtTarget() && goingtoentry && CollisionDetection()) {
+	// 	// Stay in side-following mode due to collision
+	// 	if(pointonpath > 0) pointonpath -= 1;
 	
+	// 	// Offset the next point to the left or right based on current side
+	// 	argos::CVector2 A = actualPath[pointonpath];
+	// 	argos::CVector2 B = actualPath[std::min(static_cast<size_t>(pointonpath + 1), actualPath.size() - 1)];	
+	// 	// Side-following direction (change 'isLeft' logic if needed)
+	// 	argos::CVector2 shifted = OffsetToSide(A, B, 0.15, isLeft);
+	// 	SetTarget(shifted);
+	
+	// } else if(IsAtTarget() && goingtoentry && !CollisionDetection()) {
+	// 	// No collision — commit to main path
+	// 	argos::LOG << GetId() << " is successfully entering at " << actualPath[pointonpath] << std::endl;
+	// 	CPFA_state = FOLLOWING_ENTRY_PATH;
+	// 	currentWaypointIndex = pointonpath;
+	// 	goingtoentry = false;
+	// 	SetTarget(actualPath[pointonpath]); // switch back to unshifted path
+	// 	return;
+	// }
 
+	if(CollisionDetection() && inCentralZone()){
+		if(followingEntryPath1){
+			pointonpath = FindClosestPointIndexOnPath(entryPath1);
+		} else if (followingEntryPath2) {
+			pointonpath = FindClosestPointIndexOnPath(entryPath2);
+		} else if (followingEntryPath3) {
+			pointonpath = FindClosestPointIndexOnPath(entryPath3);
+		} else if (followingEntryPath4) {
+			pointonpath = FindClosestPointIndexOnPath(entryPath4);
+		}
+		if(stopCounter > 32){
+			SetTarget(actualPath[pointonpath]);
+			LOG << GetId() << " is going to entry path." << GetTarget() <<std::endl;
+			CPFA_state = FOLLOWING_ENTRY_PATH;
+			hasExecutedOnce = false;
+			currentWaypointIndex = pointonpath;		
+		}
+
+		return;
+	}
+
+	/* ******** Following Entry Path Method ******** */
+
+	// if ((GetPosition() - entrypoint).Length() < EntryPointThreshold){
+
+	// 	if (entrypoint == entryPoints[0]) {
+	// 		actualPath = entryPath1;
+	// 		SetTarget(entryPath1[1]);
+	// 		followingEntryPath1 = true;
+	// 		//SetTarget(LoopFunctions->NestPositions[1]);
+	// 	} else if (entrypoint == entryPoints[1]) {
+	// 		SetTarget(entryPath2[1]);
+	// 		actualPath = entryPath2;
+	// 		followingEntryPath2 = true;
+	// 		// SetTarget(LoopFunctions->NestPositions[3]);
+	// 	} else if (entrypoint == entryPoints[2]) {
+	// 		SetTarget(entryPath3[1]);
+	// 		actualPath = entryPath3;
+	// 		followingEntryPath3 = true;
+	// 		//SetTarget(LoopFunctions->NestPositions[0]);
+	// 	} else if (entrypoint == entryPoints[3]) {
+	// 		SetTarget(entryPath4[1]);
+	// 		actualPath = entryPath4;
+	// 		followingEntryPath4 = true;
+	// 		// SetTarget(LoopFunctions->NestPositions[2]);
+	// 	}
+
+	// 	goingtoentry = false;
+	// 	CPFA_state = FOLLOWING_ENTRY_PATH;
+	// }
 }
+
+bool CPFA_controller::IsInsideRestrictedExitCorridor(const argos::CVector2& robotPos) {
+    Real corridorRadius = 0.17;
+
+    // for(const auto& exitPoint : exitPoints) {
+    //     argos::CVector2 toOrigin = argos::CVector2(0, 0) - exitPoint;
+    //     argos::CVector2 AP = robotPos - exitPoint;
+
+	// 	Real t = (toOrigin.DotProduct(AP)) / toOrigin.SquareLength();
+    //     t = std::max(0.0, std::min(1.0, t));  // Clamp to segment
+
+    //     argos::CVector2 closestPoint = exitPoint + t * toOrigin;
+    //     Real distance = (robotPos - closestPoint).Length();
+
+    //     if(distance <= corridorRadius)
+    //         return true;
+    // }
+
+    // return false;
+
+    for (const auto& exitPath : {exitPath1, exitPath2, exitPath3, exitPath4}) {
+        // Iterate over each segment in the exit path
+        for (size_t i = 0; i < exitPath.size() - 1; ++i) {
+            argos::CVector2 toOrigin = exitPath[i + 1] - exitPath[i]; // Vector from start to end of the segment
+            argos::CVector2 AP = robotPos - exitPath[i];             // Vector from start of the segment to the robot
+
+            // Project the robot's position onto the segment
+            Real t = (toOrigin.DotProduct(AP)) / toOrigin.SquareLength();
+            t = std::max(0.0, std::min(1.0, t)); // Clamp to the segment
+
+            // Find the closest point on the segment
+            argos::CVector2 closestPoint = exitPath[i] + t * toOrigin;
+
+            // Calculate the distance from the robot to the closest point
+            Real distance = (robotPos - closestPoint).Length();
+
+            // Check if the robot is within the corridor radius
+            if (distance <= corridorRadius) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+argos::CVector2 CPFA_controller::OffsetToSide(const argos::CVector2& A, const argos::CVector2& B, Real offset, bool left) {
+    argos::CVector2 direction = B - A;
+    direction.Normalize();
+    CRadians angle = left ? CRadians::PI_OVER_TWO : -CRadians::PI_OVER_TWO;
+    argos::CVector2 normal(offset, angle);
+    normal.Rotate(direction.Angle());
+    return A + normal;
+}
+
+
 
 bool CPFA_controller::inCentralZone(){
 	argos::CVector2 currentPosition = GetPosition();
@@ -914,9 +1280,11 @@ bool CPFA_controller::inCentralZone(){
 	argos::Real distanceToCenter = (currentPosition - center).Length();
 
 	// Check if the robot is within the central zone radius
-	return distanceToCenter < 2.0;
+	return distanceToCenter < 2.1;
 
 }  
+
+
 
 bool CPFA_controller::IsInsideCircleBoundary(const argos::CVector2& pos) {
     return (pos - m_cCircleCenter).Length() < m_fCircleRadius;
@@ -935,6 +1303,40 @@ argos::CVector2 CPFA_controller::SafeTargetFromHeading(argos::CRadians base_angl
     return candidate;
 }
 
+
+//make a function that will find the closest point on the path given the path as a parameter and return the index int
+int CPFA_controller::FindClosestPointIndexOnPath(const std::vector<argos::CVector2>& path) {
+	argos::CVector2 currentPosition = GetPosition();
+	int closestIndex = 0;
+	argos::Real minDistance = (currentPosition - path[0]).SquareLength();
+
+	for (size_t i = 1; i < path.size(); ++i) {
+		argos::Real distance = (currentPosition - path[i]).SquareLength();
+		if (distance < minDistance) {
+			minDistance = distance;
+			closestIndex = i;
+		}
+	}
+	return closestIndex;
+}
+
+
+
+//make a function that will find closest point given the path as a parameter
+argos::CVector2 CPFA_controller::FindClosestPointOnPath(const std::vector<argos::CVector2>& path) {
+	argos::CVector2 currentPosition = GetPosition();
+	argos::CVector2 closestPoint = path[0];
+	argos::Real minDistance = (currentPosition - path[0]).SquareLength();
+
+	for (size_t i = 1; i < path.size(); ++i) {
+		argos::Real distance = (currentPosition - path[i]).SquareLength();
+		if (distance < minDistance) {
+			minDistance = distance;
+			closestPoint = path[i];
+		}
+	}
+	return closestPoint;
+}
 
 CVector2 CPFA_controller::FindClosestEntryPoint() {
     argos::CVector2 currentPosition = GetPosition();
@@ -1021,6 +1423,7 @@ void CPFA_controller::SetRandomSearchLocation() {
 		
 	SetIsHeadingToNest(true); // Turn off error for this
 	SetTarget(argos::CVector2(x, y));
+	// argos::LOG << GetId() << " Random search location set to: " << GetTarget() << std::endl;
 }
 
 /*****
