@@ -320,18 +320,32 @@ void CPFA_loop_functions::PostExperiment() {
         }
         //travelSearchTimeDataOutput<< total_travel_time/ticks_per_second<<", "<<total_search_time/ticks_per_second<<endl;
         //travelSearchTimeDataOutput.close();   
-             
+		double averageInCircleCounter = 0.0;
+		if (!InCircleCounters.empty()) {
+			size_t total = 0;
+			for (size_t counter : InCircleCounters) {
+				total += counter;
+			}
+			averageInCircleCounter = static_cast<double>(total) / InCircleCounters.size();
+		}
+		
+		
         ofstream dataOutput( (header+ "iAntTagDa.txt").c_str(), ios::app);
         // output to file
         if(dataOutput.tellp() == 0) {
-            dataOutput << "tags_collected, collisions_in_seconds, time_in_minutes, random_seed\n";//qilu 08/18
+            dataOutput << "tags_collected, collisions_in_seconds, time_in_minutes, random_seed, , avg_TimeInCircleCounter\n";//qilu 08/18
         }
     
         //dataOutput <<data.CollisionTime/16.0<<", "<< time_in_minutes << ", " << data.RandomSeed << endl;
         //dataOutput << Score() << ", "<<(CollisionTime-16*Score())/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
-        dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second) << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+        // dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second) << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
+		dataOutput << Score() << ", " << CollisionTime / (2 * ticks_per_second) << ", " 
+		<< curr_time_in_minutes << ", " << RandomSeed << ", " << averageInCircleCounter << endl;
         dataOutput.close();
-
+		//print the whole InCircleCounters List
+		// for (size_t counter : InCircleCounters) {
+		// 	argos::LOG << "InCircleCounter: " << counter << std::endl;
+		// }
 		/*
         ofstream densityOutput( ("./results/densities.txt"), ios::app);
         densityOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
@@ -409,49 +423,81 @@ void CPFA_loop_functions::RandomFoodDistribution() {
 }
 
  
+// void CPFA_loop_functions::ClusterFoodDistribution() {
+//         FoodList.clear();
+// 	argos::Real     foodOffset  = 3.0 * FoodRadius;
+// 	size_t          foodToPlace = NumberOfClusters * ClusterWidthX * ClusterWidthY;
+// 	size_t          foodPlaced = 0;
+// 	argos::CVector2 placementPosition;
+
+// 	FoodItemCount = foodToPlace;
+
+// 	for(size_t i = 0; i < NumberOfClusters; i++) {
+// 		placementPosition.Set(RNG->Uniform(ForageRangeX), RNG->Uniform(ForageRangeY));
+
+// 		while(IsOutOfBounds(placementPosition, ClusterWidthY, ClusterWidthX)) {
+// 			placementPosition.Set(RNG->Uniform(ForageRangeX), RNG->Uniform(ForageRangeY));
+// 		}
+
+// 		for(size_t j = 0; j < ClusterWidthY; j++) {
+// 			for(size_t k = 0; k < ClusterWidthX; k++) {
+// 				foodPlaced++;
+// 				/*
+// 				#include <argos3/plugins/simulator/entities/box_entity.h>
+
+// 				string label("my_box_");
+// 				label.push_back('0' + foodPlaced++);
+
+// 				CBoxEntity *b = new CBoxEntity(label,
+// 					CVector3(placementPosition.GetX(),
+// 					placementPosition.GetY(), 0.0), CQuaternion(), true,
+// 					CVector3(0.1, 0.1, 0.001), 1.0);
+// 				AddEntity(*b);
+// 				*/
+
+// 				FoodList.push_back(placementPosition);
+// 				FoodColoringList.push_back(argos::CColor::BLACK);
+// 				placementPosition.SetX(placementPosition.GetX() + foodOffset);
+// 			}
+
+// 			placementPosition.SetX(placementPosition.GetX() - (ClusterWidthX * foodOffset));
+// 			placementPosition.SetY(placementPosition.GetY() + foodOffset);
+// 		}
+// 	}
+// }
 void CPFA_loop_functions::ClusterFoodDistribution() {
-        FoodList.clear();
-	argos::Real     foodOffset  = 3.0 * FoodRadius;
-	size_t          foodToPlace = NumberOfClusters * ClusterWidthX * ClusterWidthY;
-	size_t          foodPlaced = 0;
-	argos::CVector2 placementPosition;
+    FoodList.clear();
+    argos::Real foodOffset = 3.0 * FoodRadius;
+    size_t foodToPlace = NumberOfClusters * ClusterWidthX * ClusterWidthY;
+    size_t foodPlaced = 0;
+    argos::CVector2 placementPosition;
 
-	FoodItemCount = foodToPlace;
+    FoodItemCount = foodToPlace;
 
-	for(size_t i = 0; i < NumberOfClusters; i++) {
-		placementPosition.Set(RNG->Uniform(ForageRangeX), RNG->Uniform(ForageRangeY));
+    for (size_t i = 0; i < NumberOfClusters; i++) {
+        do {
+            placementPosition.Set(RNG->Uniform(ForageRangeX), RNG->Uniform(ForageRangeY));
+        } while (IsOutOfBounds(placementPosition, ClusterWidthY, ClusterWidthX) ||
+                 placementPosition.Length() < 4.5);
 
-		while(IsOutOfBounds(placementPosition, ClusterWidthY, ClusterWidthX)) {
-			placementPosition.Set(RNG->Uniform(ForageRangeX), RNG->Uniform(ForageRangeY));
-		}
+        for (size_t j = 0; j < ClusterWidthY; j++) {
+            for (size_t k = 0; k < ClusterWidthX; k++) {
+                foodPlaced++;
 
-		for(size_t j = 0; j < ClusterWidthY; j++) {
-			for(size_t k = 0; k < ClusterWidthX; k++) {
-				foodPlaced++;
-				/*
-				#include <argos3/plugins/simulator/entities/box_entity.h>
+                // Add the food item to the list
+                FoodList.push_back(placementPosition);
+                FoodColoringList.push_back(argos::CColor::BLACK);
 
-				string label("my_box_");
-				label.push_back('0' + foodPlaced++);
+                // Move to the next position in the row
+                placementPosition.SetX(placementPosition.GetX() + foodOffset);
+            }
 
-				CBoxEntity *b = new CBoxEntity(label,
-					CVector3(placementPosition.GetX(),
-					placementPosition.GetY(), 0.0), CQuaternion(), true,
-					CVector3(0.1, 0.1, 0.001), 1.0);
-				AddEntity(*b);
-				*/
-
-				FoodList.push_back(placementPosition);
-				FoodColoringList.push_back(argos::CColor::BLACK);
-				placementPosition.SetX(placementPosition.GetX() + foodOffset);
-			}
-
-			placementPosition.SetX(placementPosition.GetX() - (ClusterWidthX * foodOffset));
-			placementPosition.SetY(placementPosition.GetY() + foodOffset);
-		}
-	}
+            // Move to the next row
+            placementPosition.SetX(placementPosition.GetX() - (ClusterWidthX * foodOffset));
+            placementPosition.SetY(placementPosition.GetY() + foodOffset);
+        }
+    }
 }
-
 
 void CPFA_loop_functions::PowerLawFoodDistribution() {
  FoodList.clear();
@@ -661,6 +707,10 @@ void CPFA_loop_functions::setScore(double s) {
 
 double CPFA_loop_functions::Score() {	
 	return score;
+}
+
+void CPFA_loop_functions::UpdateInCircleCounter(size_t counter) {
+    InCircleCounters.push_back(counter); // Add the counter to the list
 }
 
 void CPFA_loop_functions::increaseNumDistributedFoodByOne(){
