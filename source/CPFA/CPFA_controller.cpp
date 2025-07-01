@@ -163,6 +163,9 @@ void CPFA_controller::ControlStep() {
 		inCircleCounter++;
 	}
 	
+	// if(IsInsideCircleBoundary(GetPosition()) && GetStatus() != "RETURNING" && GetStatus() != "FOLLOWING_ENTRY_PATH" && GetStatus() != "FOLLOWING_EXIT_PATH") {
+	// 	argos::LOG << GetId() << " is inside the circle boundary at position: " << GetStatus() << std::endl;
+	// }
 	// if(GetId() == "F19"){
 	// 	argos::LOG << GetId() << " has target: " << GetTarget() << std::endl;
 	// }
@@ -542,6 +545,19 @@ void CPFA_controller::SetLoopFunctions(CPFA_loop_functions* lf) {
 // Trying to modfiy state to prioritize dropped resources around the nest.
 void CPFA_controller::Departing()
 {
+
+	// if(IsInsideCircleBoundary(GetPosition())){
+	// 	// Stop();
+	// 	argos::CVector2 direction = GetPosition() - m_cCircleCenter;
+	// 	direction.Normalize();
+	// 	argos::CVector2 escape_target = GetPosition() + direction * SearchStepSize;
+		
+	// 	SetTarget(escape_target);
+	// 	// argos::LOG << GetId() << " is inside the circle boundary and escaping to: " 
+	// 	// 	<< escape_target.GetX() << ", " << escape_target.GetY() << std::endl;
+	// 	return; 
+	// }
+
 	m_pcLEDs->SetAllColors(CColor::BLACK);
      //LOG<<"Departing..."<<endl;
     argos::Real distanceToTarget = (GetPosition() - GetTarget()).Length();
@@ -624,27 +640,27 @@ void CPFA_controller::FollowingEntryPath() {
 			LoopFunctions->setScore(num_targets_collected);
 		}
 
-		// if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
-		//     SetIsHeadingToNest(false);
-		//     SetTarget(SiteFidelityPosition);
-		// 	LOG << GetId() << " is using site fidelity at position: " << SiteFidelityPosition << std::endl;
-		//     isInformed = true;
-		// }
-		// else if (SetTargetPheromone()) {
-		// 	LOG << GetId() << " is using pheromone at position: " << GetTarget() << std::endl;
-		//     isInformed = true;
-		//     isUsingSiteFidelity = false;
-		// }
-		// else {
-		//     SetRandomSearchLocation();
-		//     isInformed = false;
-		//     isUsingSiteFidelity = false;
-		// 	useRandomSearch = true;
-		// 	LOG << GetId() << " is using random search at position: " << GetTarget() << std::endl;
-		// }
+		if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
+		    SetIsHeadingToNest(false);
+		    SetTarget(SiteFidelityPosition);
+			// LOG << GetId() << " is using site fidelity at position: " << SiteFidelityPosition << std::endl;
+		    isInformed = true;
+		}
+		else if (SetTargetPheromone()) {
+			// LOG << GetId() << " is using pheromone at position: " << GetTarget() << std::endl;
+		    isInformed = true;
+		    isUsingSiteFidelity = false;
+		}
+		else {
+		    SetRandomSearchLocation();
+		    isInformed = false;
+		    isUsingSiteFidelity = false;
+			useRandomSearch = true;
+			// LOG << GetId() << " is using random search at position: " << GetTarget() << std::endl;
+		}
 
 
-		// mainTarget = GetTarget();
+		mainTarget = GetTarget();
 
 		/*
 		This is for choosing the same exit path for consitency.
@@ -666,23 +682,23 @@ void CPFA_controller::FollowingEntryPath() {
 		// }
 
 		// SetTarget(actualExitPath[0]);
-		if (followingEntryPath1) {
-            SetTarget(exitPath1[0]);
-            followingEntryPath1 = false;
-            actualExitPath = exitPath1;
-        } else if (followingEntryPath2) {
-            SetTarget(exitPath2[0]);
-            followingEntryPath2 = false;
-            actualExitPath = exitPath2;
-        } else if (followingEntryPath3) {
-            SetTarget(exitPath3[0]);
-            followingEntryPath3 = false;
-            actualExitPath = exitPath3;
-        } else if (followingEntryPath4) {
-            SetTarget(exitPath4[0]);
-            followingEntryPath4 = false;
-            actualExitPath = exitPath4;
-        }
+		// if (followingEntryPath1) {
+        //     SetTarget(exitPath1[0]);
+        //     followingEntryPath1 = false;
+        //     actualExitPath = exitPath1;
+        // } else if (followingEntryPath2) {
+        //     SetTarget(exitPath2[0]);
+        //     followingEntryPath2 = false;
+        //     actualExitPath = exitPath2;
+        // } else if (followingEntryPath3) {
+        //     SetTarget(exitPath3[0]);
+        //     followingEntryPath3 = false;
+        //     actualExitPath = exitPath3;
+        // } else if (followingEntryPath4) {
+        //     SetTarget(exitPath4[0]);
+        //     followingEntryPath4 = false;
+        //     actualExitPath = exitPath4;
+        // }
 		/* 
 		This is for choosing the exit path that is closest to next destination.
 		*/
@@ -690,33 +706,33 @@ void CPFA_controller::FollowingEntryPath() {
 		// Choose the best intermediate step (closest of 4-adjacent)
 		
 
-		// argos::CVector2 bestStep = exitPoints[0];
-		// Real bestDistance = (mainTarget - bestStep).Length();
+		argos::CVector2 bestStep = exitPoints[0];
+		Real bestDistance = (mainTarget - bestStep).Length();
 
-		// for (size_t i = 1; i < exitPoints.size(); ++i) {
-		// 	Real dist = (mainTarget - exitPoints[i]).Length();
-		// 	if (dist < bestDistance) {
-		// 		bestDistance = dist;
-		// 		bestStep = exitPoints[i];
-		// 	}
-		// }
+		for (size_t i = 1; i < exitPoints.size(); ++i) {
+			Real dist = (mainTarget - exitPoints[i]).Length();
+			if (dist < bestDistance) {
+				bestDistance = dist;
+				bestStep = exitPoints[i];
+			}
+		}
 
-		// if(bestStep == exitPath1[1]){
-		// 	actualExitPath = exitPath1;
-		// 	followingEntryPath1 = false;
-		// } else if(bestStep == exitPath2[1]) {
-		// 	actualExitPath = exitPath2;
-		// 	followingEntryPath2 = false;
-		// } else if(bestStep == exitPath3[1]) {
-		// 	actualExitPath = exitPath3;
-		// 	followingEntryPath3 = false;
-		// } else if(bestStep == exitPath4[1]) {
-		// 	actualExitPath = exitPath4;
-		// 	followingEntryPath4 = false;
-		// }
+		if(bestStep == exitPath1[1]){
+			actualExitPath = exitPath1;
+			followingEntryPath1 = false;
+		} else if(bestStep == exitPath2[1]) {
+			actualExitPath = exitPath2;
+			followingEntryPath2 = false;
+		} else if(bestStep == exitPath3[1]) {
+			actualExitPath = exitPath3;
+			followingEntryPath3 = false;
+		} else if(bestStep == exitPath4[1]) {
+			actualExitPath = exitPath4;
+			followingEntryPath4 = false;
+		}
 		// argos::LOG << "Robot: " << GetId() << " reached the nest and is now following the exit path to: "
 		// 	<< actualExitPath[0] << std::endl;
-		// SetTarget(actualExitPath[0]);
+		SetTarget(actualExitPath[0]);
 
 		isHoldingFood = false; 
 		isGivingUpSearch = false;
@@ -749,7 +765,7 @@ void CPFA_controller::FollowingEntryPath() {
 		notAtTargetCounter++;
 	}
 
-	if(notAtTargetCounter > 1200){
+	if(notAtTargetCounter > 600){
 		currentWaypointIndex = FindClosestPointIndexOnPath(actualPath);
 		currentWaypointIndex += 1; // increment to next point
 		if (currentWaypointIndex >= actualPath.size()) {
@@ -788,7 +804,7 @@ void CPFA_controller::FollowingExitPath() {
 		exitPointCounter++;
 	}
 
-	if(exitPointCounter > 75){
+	if(exitPointCounter > 90){
 		// if the robot is not at the target after 150 ticks, choose a random new exit path from exitPath1, exitPath2, exitPath3, exitPath4
 		argos::LOG << "Robot: " << GetId() << " is not at the target after 150 ticks, choosing a new exit path." << std::endl;
 		int randomExitPath = RNG->Uniform(argos::CRange<int>(0, 3));
