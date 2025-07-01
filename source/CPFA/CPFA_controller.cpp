@@ -30,7 +30,7 @@ CPFA_controller::CPFA_controller() :
         updateFidelity(false),
         last_time_in_seconds(0)
 {
-	GoStraightAngleRangeInDegreesInRegion.Set(-30.0, 30.0);
+	GoStraightAngleRangeInDegreesInRegion.Set(-40.0, 40.0);
 	GoStraightAngleRangeInDegreesGoingToRegion.Set(-55.0, 55.0);
 	GoStraightAngleRangeInDegreesLeftSide.Set(-90.0, -30.0);
 	GoStraightAngleRangeInDegreesRightSide.Set(30.0, 90.0);
@@ -162,7 +162,12 @@ void CPFA_controller::ControlStep() {
 	else if ((GetPosition() - argos::CVector2(0.0, 0.0)).Length() <= 2.0 && GetStatus() == "RETURNING" && isHoldingFood) {
 		inCircleCounter++;
 	}
-	
+	// if ((GetPosition() - argos::CVector2(0.0, 0.0)).Length() <= 1.1 && GetStatus() != "RETURNING" && GetStatus() != "FOLLOWING_EXIT_PATH" && GetStatus() != "FOLLOWING_ENTRY_PATH") {
+	// 	// argos::LOG << GetId() << " is within 0.7 distance of the center. " << GetStatus() <<std::endl;
+	// 	// CPFA_state = RETURNING;
+	// 	// Set to closest exit path
+		
+	// }
 	// if(GetId() == "F19"){
 	// 	argos::LOG << GetId() << " has target: " << GetTarget() << std::endl;
 	// }
@@ -367,7 +372,7 @@ bool CPFA_controller::CollisionDetection() {
 				// argos::LOG << GetId() << " - Resuming movement after collision." << std::endl;
                 stopcooldownCounter = 0; // Reset the counter
 				return true;
-            }
+			}
 			else{
 				Stop();
 				return true;
@@ -783,14 +788,17 @@ void CPFA_controller::FollowingExitPath() {
 		goingtoexit = true;
 		exitPointCounter = 0;
 		hasntReachedFirstExitPoint = true;
+		secondExitPointCounter = 0;
 	}
 	if(!hasntReachedFirstExitPoint){
 		exitPointCounter++;
+	}else{
+		secondExitPointCounter++;
 	}
 
-	if(exitPointCounter > 75){
+	if(exitPointCounter > 100 || secondExitPointCounter > 1300) {
 		// if the robot is not at the target after 150 ticks, choose a random new exit path from exitPath1, exitPath2, exitPath3, exitPath4
-		argos::LOG << "Robot: " << GetId() << " is not at the target after 150 ticks, choosing a new exit path." << std::endl;
+		// argos::LOG << "Robot: " << GetId() << " is not at the target after 150 ticks, choosing a new exit path." << std::endl;
 		int randomExitPath = RNG->Uniform(argos::CRange<int>(0, 3));
 		if (randomExitPath == 0) {
 			actualExitPath = exitPath1;
@@ -806,10 +814,12 @@ void CPFA_controller::FollowingExitPath() {
 			SetTarget(exitPath4[0]);
 		}
 		exitPointCounter = 0;
+		secondExitPointCounter = 0;
 	}
 
 	if(goingtoexit && ((GetPosition() - GetTarget()).Length() < EntryPointThreshold)){
 		exitPointCounter = 0;
+		secondExitPointCounter = 0;
 		//Decide next search strategy (pheromone/site fidelity/random)
 		if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
 		    SetIsHeadingToNest(false);
@@ -837,7 +847,12 @@ void CPFA_controller::FollowingExitPath() {
 		// 	SetTarget(mainTarget);
 		// }
 
-		CPFA_state = DEPARTING;   
+		CPFA_state = DEPARTING; 
+		// if GetPosition is within 0.7 distance of center
+		
+
+
+
 		goingtoexit = false;
 		hasntReachedFirstExitPoint = false;
 	}
@@ -846,7 +861,25 @@ void CPFA_controller::FollowingExitPath() {
 
 void CPFA_controller::Searching() {
 
-	
+	// if(inCentralZone()){
+	// 	// argos::LOG << GetId() << " reached the radius and is now doing random search..." << std::endl;
+
+	// 	Stop();
+	// 	SearchTime = 0;
+	// 	travelingTime+=SimulationTick()-startTime;//qilu 10/22
+	// 	startTime = SimulationTick();//qilu 10/22
+   
+	// 	argos::Real USV = LoopFunctions->UninformedSearchVariation.GetValue();
+	// 	argos::Real rand = RNG->Gaussian(USV);
+	// 	argos::CRadians rotation(rand);
+	// 	argos::CRadians angle1(rotation.UnsignedNormalize());
+	// 	argos::CRadians angle2(GetHeading().UnsignedNormalize());
+	// 	argos::CRadians turn_angle(angle1 + angle2);
+	// 	argos::CVector2 turn_vector(SearchStepSize, turn_angle);
+	// 	SetIsHeadingToNest(false);
+	// 	SetTarget(turn_vector + GetPosition());
+	// 	return;
+	// }
  //LOG<<"Searching..."<<endl;
 	// "scan" for food only every half of a second
 	m_pcLEDs->SetAllColors(CColor::BLACK);
@@ -1449,7 +1482,7 @@ void CPFA_controller::Returning() {
 }
 
 bool CPFA_controller::IsInsideRestrictedExitCorridor(const argos::CVector2& robotPos) {
-    Real corridorRadius = 0.22;
+    Real corridorRadius = 0.21;
 
     // for(const auto& exitPoint : exitPoints) {
     //     argos::CVector2 toOrigin = argos::CVector2(0, 0) - exitPoint;
