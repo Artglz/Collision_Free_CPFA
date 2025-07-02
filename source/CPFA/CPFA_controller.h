@@ -616,11 +616,11 @@ class CPFA_controller : public BaseController {
 		// std::vector<argos::CVector2> exitPath2 = {{-0.3, -0.3}, {-1.4, -1.4}};
 		// std::vector<argos::CVector2> exitPath3 = {{-0.3, 0.3}, {-1.4, 1.4}};
 		// std::vector<argos::CVector2> exitPath4 = {{0.3, -0.3}, {1.4, -1.4}};
-		std::vector<argos::CVector2> exitPath1 = {{0.2, 0.2}, {1.4, 1.4}};
-		std::vector<argos::CVector2> exitPath2 = {{-0.2, -0.2}, {-1.4, -1.4}};
-		std::vector<argos::CVector2> exitPath3 = {{-0.2, 0.2}, {-1.4, 1.4}};
-		std::vector<argos::CVector2> exitPath4 = {{0.2, -0.2}, {1.4, -1.4}};
-		std::vector<argos::CVector2> exitPoints = {{1.4, 1.4}, {-1.4, -1.4}, {-1.4, 1.4}, {1.4, -1.4}}; // exit point of the paths
+		std::vector<argos::CVector2> exitPath1 = {{0.2, 0.2}, {1.6, 1.6}};
+		std::vector<argos::CVector2> exitPath2 = {{-0.2, -0.2}, {-1.6, -1.6}};
+		std::vector<argos::CVector2> exitPath3 = {{-0.2, 0.2}, {-1.6, 1.6}};
+		std::vector<argos::CVector2> exitPath4 = {{0.2, -0.2}, {1.6, -1.6}};
+		std::vector<argos::CVector2> exitPoints = {{1.6, 1.6}, {-1.6, -1.6}, {-1.6, 1.6}, {1.6, -1.6}}; // exit point of the paths
 		
 		std::vector<argos::CVector2> exitPath1Straight = {{0,0}, {1.6, 0.0}};
 		std::vector<argos::CVector2> exitPath2Straight = {{0,0}, {-1.6, 0.0}};
