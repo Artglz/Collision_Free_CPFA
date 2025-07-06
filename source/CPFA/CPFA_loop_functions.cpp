@@ -346,6 +346,8 @@ void CPFA_loop_functions::PostExperiment() {
 		// for (size_t counter : InCircleCounters) {
 		// 	argos::LOG << "InCircleCounter: " << counter << std::endl;
 		// }
+		//print len of inCircleCounters list
+		// argos::LOG << "InCircleCounters size: " << InCircleCounters.size() << std::endl;
 		/*
         ofstream densityOutput( ("./results/densities.txt"), ios::app);
         densityOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;

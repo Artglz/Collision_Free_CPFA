@@ -92,8 +92,8 @@ class CPFA_controller : public BaseController {
 		// std::vector<argos::CVector2> entryPoints = {{2.0, 0}, {-2.0, 0}, {0, 2.0}, {0, -2.0}}; // entry point of the paths
 
 		
-		const argos::Real EntryPointThreshold = 0.15; // Distance threshold for entry points
-
+		const argos::Real EntryPointThreshold = 0.3; // Distance threshold for entry points
+		const argos::Real ExitPointThreshold = 0.1;
 		// std::vector<argos::CVector2> entryPath1 = {
 		// 	{2.0, 0.5}, {1.5, 0.5},
 		// 	{1.5, -0.5}, {1.0, -0.5}, {1.0, 0.5},
@@ -617,6 +617,7 @@ class CPFA_controller : public BaseController {
 		size_t nestStopCounter = 0;
 		size_t inCircleCounter = 0;
 		size_t exitPointCounter = 0;
+		size_t secondExitPointCounter = 0;
 		bool hasntReachedFirstExitPoint = false;
 		bool firstTimeInNest = false;
 		CVector2 escapeTarget;
