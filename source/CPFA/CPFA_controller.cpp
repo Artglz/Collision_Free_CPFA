@@ -154,12 +154,12 @@ void CPFA_controller::ControlStep() {
 	// }
 
 	// Check if the robot is within 2.0 units from the origin (0,0)
-	if(IsInTheNest() && GetStatus() == "RETURNING" && isHoldingFood && firstTimeInNest) {
+	if(IsInTheNest() && GetStatus() == "FOLLOWING_ENTRY_PATH" && isHoldingFood && firstTimeInNest) {
 		// send inCircleCounter to loopfunctions
 		LoopFunctions->UpdateInCircleCounter(inCircleCounter);
 		inCircleCounter = 0;
 	}
-	else if ((GetPosition() - argos::CVector2(0.0, 0.0)).Length() <= 2.0 && GetStatus() == "RETURNING" && isHoldingFood) {
+	else if ((GetPosition() - argos::CVector2(0.0, 0.0)).Length() <= 2.0 && GetStatus() == "FOLLOWING_ENTRY_PATH" && isHoldingFood) {
 		inCircleCounter++;
 	}
 	
@@ -344,7 +344,7 @@ bool CPFA_controller::CollisionDetection() {
 	// 	}
 
 	// }
-	if(GetStatus() == "FOLLOWING_EXIT_PATH"){
+	if(GetStatus() == "FOLLOWING_EXIT_PATH") {
 		if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
 		&& collisionVector.Length() > 0.0) {
 		return true;
@@ -765,7 +765,7 @@ void CPFA_controller::FollowingEntryPath() {
 		notAtTargetCounter++;
 	}
 
-	if(notAtTargetCounter > 600){
+	if(notAtTargetCounter > 500){
 		currentWaypointIndex = FindClosestPointIndexOnPath(actualPath);
 		currentWaypointIndex += 1; // increment to next point
 		if (currentWaypointIndex >= actualPath.size()) {
@@ -792,21 +792,25 @@ void CPFA_controller::FollowingExitPath() {
 	// }
 
 
-	if ((GetPosition() - GetTarget()).Length() < EntryPointThreshold) {
+	if ((GetPosition() - GetTarget()).Length() < ExitPointThreshold) {
 		//argos::LOG << "Reached intermediate target on exit path..." << std::endl;
         SetTarget(actualExitPath[1]);
 		actualExitPath.clear();
 		goingtoexit = true;
 		exitPointCounter = 0;
 		hasntReachedFirstExitPoint = true;
+		secondExitPointCounter = 0;
+
 	}
 	if(!hasntReachedFirstExitPoint){
 		exitPointCounter++;
+	}else{
+		// secondExitPointCounter++;
 	}
 
-	if(exitPointCounter > 90){
+	if(exitPointCounter > 90 || secondExitPointCounter > 600){
 		// if the robot is not at the target after 150 ticks, choose a random new exit path from exitPath1, exitPath2, exitPath3, exitPath4
-		argos::LOG << "Robot: " << GetId() << " is not at the target after 150 ticks, choosing a new exit path." << std::endl;
+		// argos::LOG << "Robot: " << GetId() << " is not at the target after 150 ticks, choosing a new exit path." << std::endl;
 		int randomExitPath = RNG->Uniform(argos::CRange<int>(0, 3));
 		if (randomExitPath == 0) {
 			actualExitPath = exitPath1;
@@ -822,10 +826,12 @@ void CPFA_controller::FollowingExitPath() {
 			SetTarget(exitPath4[0]);
 		}
 		exitPointCounter = 0;
+		secondExitPointCounter = 0;
 	}
 
 	if(goingtoexit && ((GetPosition() - GetTarget()).Length() < EntryPointThreshold)){
 		exitPointCounter = 0;
+		secondExitPointCounter = 0;
 		//Decide next search strategy (pheromone/site fidelity/random)
 		if (updateFidelity && GetPoissonCDF(ResourceDensity, LoopFunctions->RateOfSiteFidelity) > RNG->Uniform(argos::CRange<argos::Real>(0.0, 1.0))) {
 		    SetIsHeadingToNest(false);
