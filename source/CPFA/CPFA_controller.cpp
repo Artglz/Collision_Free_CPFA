@@ -265,21 +265,21 @@ bool CPFA_controller::CollisionDetection() {
 	argos::Real collisionAngle = ToDegrees(collisionVector.Angle()).GetValue();
 	bool isCollisionDetected = false;
 
-	if (GetStatus() == "RETURNING" && inCentralZone()) {
-        if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
-            && collisionVector.Length() > 0.0) {
-			// If a collision is detected for more than 32 timesteps (1 second) in a row, then keep moving to prevent deadlock.
-			if(stopCounter < 32){
-				Stop();
+	// if (GetStatus() == "RETURNING" && inCentralZone()) {
+    //     if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
+    //         && collisionVector.Length() > 0.0) {
+	// 		// If a collision is detected for more than 32 timesteps (1 second) in a row, then keep moving to prevent deadlock.
+	// 		if(stopCounter < 32){
+	// 			Stop();
 
-			};
-			stopCounter++;
-			return true;
-		}else{
-			// stopCounter = 0;
-			return false;
-		}
-	}
+	// 		};
+	// 		// stopCounter++;
+	// 		return true;
+	// 	}else{
+	// 		// stopCounter = 0;
+	// 		return false;
+	// 	}
+	// }
 
 	// if robot is following exit path then ignore collisions.
 	if(GetStatus() == "FOLLOWING_EXIT_PATH"){
@@ -291,9 +291,10 @@ bool CPFA_controller::CollisionDetection() {
 		}
 	}
 
-    if (GetStatus() == "FOLLOWING_ENTRY_PATH") {
+    if (GetStatus() == "FOLLOWING_ENTRY_PATH" || isWaitingForCollision) {
         if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
             && collisionVector.Length() > 0.0) {
+				collision_counter++;
 			// if in collision for more than 10 timesteps, ignore collison
             stopcooldownCounter++; // Increment the stop counter
             if (stopcooldownCounter > 10) {
@@ -686,7 +687,7 @@ void CPFA_controller::FollowingExitPath() {
 		secondExitPointCounter++;
 	}
 
-	if(exitPointCounter > 100 || secondExitPointCounter > 1300) {
+	if(exitPointCounter > 150 || secondExitPointCounter > 1300) {
 		// if the robot is not at the target after 100 ticks, choose a random new exit path from exitPath1, exitPath2, exitPath3, exitPath4
 		// argos::LOG << "Robot: " << GetId() << " is not at the target after 150 ticks, choosing a new exit path." << std::endl;
 		int randomExitPath = RNG->Uniform(argos::CRange<int>(0, 3));
@@ -1072,8 +1073,8 @@ void CPFA_controller::Returning() {
 		Stop();
 		SetIsHeadingToNest(false);
 	
-		// LOG << "Robot: " << GetId() << " is in restricted corridor. Original target: "
-		// 	<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
+		LOG << "Robot: " << GetId() << " is in restricted corridor. Original target: "
+			<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
 	
 		// Determine deflection direction based on robot's position
 		CRadians baseAngle = (CVector2(0, 0) - GetPosition()).Angle(); // Angle from robot to center
@@ -1181,19 +1182,25 @@ void CPFA_controller::Returning() {
 
 	// If we detect a collision, calculate the closest point on the entry path and set it as the target.
 	if(CollisionDetection() && inCentralZone()){
-		if(followingEntryPath1){
-			pointonpath = FindClosestPointIndexOnPath(entryPath1);
-		} else if (followingEntryPath2) {
-			pointonpath = FindClosestPointIndexOnPath(entryPath2);
-		} else if (followingEntryPath3) {
-			pointonpath = FindClosestPointIndexOnPath(entryPath3);
-		} else if (followingEntryPath4) {
-			pointonpath 
-			= FindClosestPointIndexOnPath(entryPath4);
+		if(!isWaitingForCollision) {
+			timeCollided = collision_counter;
+			isWaitingForCollision = true;
 		}
-
-		// stop for 1 second to enter path
-		if(stopCounter > 32){
+		else{
+			// argos::LOG << "Robot: " << GetId() << " is waiting for collision to end." << std::endl;
+			size_t collision = collision_counter - timeCollided;
+			if(collision > 50) {
+				if(followingEntryPath1){
+					pointonpath = FindClosestPointIndexOnPath(entryPath1);
+				} else if (followingEntryPath2) {
+					pointonpath = FindClosestPointIndexOnPath(entryPath2);
+				} else if (followingEntryPath3) {
+					pointonpath = FindClosestPointIndexOnPath(entryPath3);
+				} else if (followingEntryPath4) {
+					pointonpath = FindClosestPointIndexOnPath(entryPath4);
+				}
+						// stop for 1 second to enter path
+		// if(stopCounter > 32){
 
 			// only do pointonpath+1 if in bounds actualPath
 			if(pointonpath >= actualPath.size()){
@@ -1203,10 +1210,21 @@ void CPFA_controller::Returning() {
 			// LOG << GetId() << " is going to entry path." << GetTarget() <<std::endl;
 			CPFA_state = FOLLOWING_ENTRY_PATH;
 			hasExecutedOnce = false;
-			currentWaypointIndex = pointonpath;		
+			currentWaypointIndex = pointonpath;	
+			isWaitingForCollision = false;	
+		// }
+			}
 		}
 
+
+
+
 		return;
+	}else {
+		if(isWaitingForCollision) {
+			isWaitingForCollision = false;
+			timeCollided = 0;
+		}
 	}
 
 	/* ******** Following Entry Path Method ******** */

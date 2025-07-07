@@ -612,6 +612,8 @@ class CPFA_controller : public BaseController {
 		bool isLeft;
 		int pointonpath;			
 		bool goingtoexit = false;
+		bool isWaitingForCollision = false;
+		size_t timeCollided;
 		// std::vector<argos::CVector2> exitPath1 = {{0.3, 0.3}, {1.4, 1.4}};
 		// std::vector<argos::CVector2> exitPath2 = {{-0.3, -0.3}, {-1.4, -1.4}};
 		// std::vector<argos::CVector2> exitPath3 = {{-0.3, 0.3}, {-1.4, 1.4}};
