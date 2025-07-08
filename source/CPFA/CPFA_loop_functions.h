@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <set>
 #include <algorithm> 
-#include <json/json.h>
+// #include <json/json.h>
 
 #pragma push_macro("slots")
 #undef slots
@@ -237,6 +237,7 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 
 		
                 Real   CollisionTime;
+				Real TotalRedCircleTime;
                 size_t currCollisionTime; 
                 size_t lastCollisionTime; 
                 size_t lastNumCollectedFood;

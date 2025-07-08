@@ -308,6 +308,7 @@ void CPFA_loop_functions::PostExperiment() {
             BaseController& c = dynamic_cast<BaseController&>(footBot.GetControllableEntity().GetController());
             CPFA_controller& c2 = dynamic_cast<CPFA_controller&>(c);
             CollisionTime += c2.GetCollisionTime();
+			TotalRedCircleTime += c2.GetTotalTimeInsideRedCircle();
             
             /*if(c2.GetStatus() == "SEARCHING"){
                 total_search_time += SimTime-c2.GetTravelingTime();
@@ -318,6 +319,8 @@ void CPFA_loop_functions::PostExperiment() {
 		total_travel_time += SimTime-c2.GetSearchingTime();
             } */        
         }
+
+		printf("Resource Collected: %.2f, Collision Time: %.2f, Time Inside RedCircle: %.2f, Time Took: %.2f minutes, Random Seed: %lu\n", score, (CollisionTime / (2 * (ticks_per_second)))/60.0f, (TotalRedCircleTime/60.0f)/score, getSimTimeInSeconds()/60.0, RandomSeed);
         //travelSearchTimeDataOutput<< total_travel_time/ticks_per_second<<", "<<total_search_time/ticks_per_second<<endl;
         //travelSearchTimeDataOutput.close();   
 		double averageInCircleCounter = 0.0;
@@ -340,7 +343,7 @@ void CPFA_loop_functions::PostExperiment() {
         //dataOutput << Score() << ", "<<(CollisionTime-16*Score())/(2*ticks_per_second)<< ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
         // dataOutput << Score() << ", "<<CollisionTime/(2*ticks_per_second) << ", "<< curr_time_in_minutes <<", "<<RandomSeed<<endl;
 		dataOutput << Score() << ", " << CollisionTime / (2 * ticks_per_second) << ", " 
-		<< curr_time_in_minutes << ", " << RandomSeed << ", " << averageInCircleCounter << endl;
+		<< curr_time_in_minutes << ", " << RandomSeed << ", " << (TotalRedCircleTime/60.0f)/score << endl;
         dataOutput.close();
 		//print the whole InCircleCounters List
 		// for (size_t counter : InCircleCounters) {

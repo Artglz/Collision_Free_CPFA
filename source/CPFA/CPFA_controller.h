@@ -37,6 +37,7 @@ class CPFA_controller : public BaseController {
 		bool IsUsingSiteFidelity();
 		bool IsInTheNest();
 		argos::Real getSimTimeInSeconds();
+		Real GetTotalTimeInsideRedCircle();
 
 		Real FoodDistanceTolerance;
 
@@ -748,6 +749,10 @@ class CPFA_controller : public BaseController {
 		bool IsLeftOfLine(const argos::CVector2& A, const argos::CVector2& B, const argos::CVector2& P);
 		Real DistanceFromPointToSegment(const argos::CVector2& P, const argos::CVector2& A, const argos::CVector2& B);
 		bool IsLeftOfPath(const std::vector<argos::CVector2>& path, const argos::CVector2& pos);
+
+		bool timeSet;
+		Real timeInsideRedCircle;
+		Real totalTimeInsideRedCircle;
 };
 
 #endif /* CPFA_CONTROLLER_H */

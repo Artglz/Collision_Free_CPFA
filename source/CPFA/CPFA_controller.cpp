@@ -28,7 +28,10 @@ CPFA_controller::CPFA_controller() :
     m_pcLEDs(NULL),
     TrailColor(CColor::BLUE),
         updateFidelity(false),
-        last_time_in_seconds(0)
+        last_time_in_seconds(0),
+		timeSet(false),
+		timeInsideRedCircle(0.0),
+		totalTimeInsideRedCircle(0.0)
 {
 	GoStraightAngleRangeInDegreesInRegion.Set(-40.0, 40.0);
 	GoStraightAngleRangeInDegreesGoingToRegion.Set(-55.0, 55.0);
@@ -1001,6 +1004,10 @@ void CPFA_controller::Surveying() {
 	}
 }
 
+Real CPFA_controller::GetTotalTimeInsideRedCircle() {
+	return totalTimeInsideRedCircle;
+}
+
 void CPFA_controller::Returning() {
 
 	// if (SimulationTick() % 100 == 0) {
@@ -1073,8 +1080,8 @@ void CPFA_controller::Returning() {
 		Stop();
 		SetIsHeadingToNest(false);
 	
-		LOG << "Robot: " << GetId() << " is in restricted corridor. Original target: "
-			<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
+		// LOG << "Robot: " << GetId() << " is in restricted corridor. Original target: "
+		// 	<< GetTarget().GetX() << ", " << GetTarget().GetY() << std::endl;
 	
 		// Determine deflection direction based on robot's position
 		CRadians baseAngle = (CVector2(0, 0) - GetPosition()).Angle(); // Angle from robot to center
@@ -1123,6 +1130,10 @@ void CPFA_controller::Returning() {
 		return;
 	}
 
+	if(!timeSet && inCentralZone()) {
+		timeInsideRedCircle = LoopFunctions->getSimTimeInSeconds();
+		timeSet = true;
+	}
 
 	
 
@@ -1132,6 +1143,11 @@ void CPFA_controller::Returning() {
 			firstTimeInNest = true;
 		}else{
 			firstTimeInNest = false;
+		}
+
+		if(timeSet && isHoldingFood) {
+			totalTimeInsideRedCircle += (LoopFunctions->getSimTimeInSeconds() - timeInsideRedCircle);
+			timeSet = false;
 		}
 
 		//stop for 160 timesteps
