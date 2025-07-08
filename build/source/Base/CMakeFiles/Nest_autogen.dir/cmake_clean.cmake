@@ -1,7 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/Nest_autogen"
   "Nest_autogen/mocs_compilation.cpp"
-  "Nest_autogen/timestamp"
 )
 
 # Per-language clean rules from dependency scanning.

@@ -634,7 +634,9 @@ class CPFA_controller : public BaseController {
 			SURVEYING = 3,
 			FOLLOWING_ENTRY_PATH = 4,
 			FOLLOWING_EXIT_PATH = 5
-		} CPFA_state;		
+		} CPFA_state;	
+
+		Real GetTotalTimeInsideRedCircle();	
 
 	private:
   string 			controllerID;//qilu 07/26/2016
@@ -720,6 +722,11 @@ class CPFA_controller : public BaseController {
 		bool IsLeftOfLine(const argos::CVector2& A, const argos::CVector2& B, const argos::CVector2& P);
 		Real DistanceFromPointToSegment(const argos::CVector2& P, const argos::CVector2& A, const argos::CVector2& B);
 		bool IsLeftOfPath(const std::vector<argos::CVector2>& path, const argos::CVector2& pos);
+
+		Real timeInsideRedCircle;
+		Real totalTimeInsideRedCircle;
+		bool timeSet;
+
 };
 
 #endif /* CPFA_CONTROLLER_H */

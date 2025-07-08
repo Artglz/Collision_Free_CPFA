@@ -1,7 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/CPFA_controller_autogen"
   "CPFA_controller_autogen/mocs_compilation.cpp"
-  "CPFA_controller_autogen/timestamp"
 )
 
 # Per-language clean rules from dependency scanning.

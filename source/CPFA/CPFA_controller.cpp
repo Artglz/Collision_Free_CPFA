@@ -28,7 +28,10 @@ CPFA_controller::CPFA_controller() :
     m_pcLEDs(NULL),
     TrailColor(CColor::BLUE),
         updateFidelity(false),
-        last_time_in_seconds(0)
+        last_time_in_seconds(0),
+		timeSet(false),
+		totalTimeInsideRedCircle(0.0),
+		timeInsideRedCircle(0.0)
 {
 	GoStraightAngleRangeInDegreesInRegion.Set(-25.0, 25.0);
 	GoStraightAngleRangeInDegreesGoingToRegion.Set(-55.0, 55.0);
@@ -612,6 +615,10 @@ void CPFA_controller::Departing()
 
 }
 
+Real CPFA_controller::GetTotalTimeInsideRedCircle() {
+	return totalTimeInsideRedCircle;
+}
+
 void CPFA_controller::FollowingEntryPath() {
 	
 	if (SimulationTick() % 40 == 0) {
@@ -622,6 +629,11 @@ void CPFA_controller::FollowingEntryPath() {
 	if (IsInTheNest()) {
 		//argos::LOG << "Executed " << currentWaypointIndex << " out of " << EntryPath.size() << " Waypoints" << std::endl;
 
+		if(timeSet) {
+			totalTimeInsideRedCircle += (LoopFunctions->getSimTimeInSeconds() - timeInsideRedCircle);
+			timeSet = false;
+		}
+		
 		if(nestStopCounter == 0){
 			firstTimeInNest = true;
 		}else{
@@ -1436,6 +1448,11 @@ void CPFA_controller::Returning() {
 			actualPath = entryPath4;
 			followingEntryPath4 = true;
 			// SetTarget(LoopFunctions->NestPositions[2]);
+		}
+
+		if(!timeSet) {
+			timeInsideRedCircle = LoopFunctions->getSimTimeInSeconds();
+			timeSet = true;
 		}
 
 		goingtoentry = false;
