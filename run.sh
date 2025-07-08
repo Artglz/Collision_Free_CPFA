@@ -5,8 +5,8 @@
 # and extracts the "Resource Collected:" lines from the output
 
 CONFIG_FILE="experiments/Clustered_CPFA_r40_tag256_16by16_TEST.xml" # go to this file change the robot numbers: if 48 robots, then change name below accordingly.
-OUTPUT_FILE="results_18_mins_64_robots.txt" # change just the number of robots, ex: results_18_mins_48_robots.txt
-TEMP_CONFIG="temp_64.xml" # here too, ex: temp_48.xml
+OUTPUT_FILE="results_18_mins_112_robots.txt" # change just the number of robots, ex: results_18_mins_48_robots.txt
+TEMP_CONFIG="temp_112.xml" # here too, ex: temp_48.xml
 
 # Array of random seeds to use
 SEEDS=(123456 789012 345678 901234 567890 135791 246802 864209 751936 428573 
@@ -20,7 +20,7 @@ echo "Starting 20 simulation runs with different random seeds..."
 echo "Results will be saved to: $OUTPUT_FILE"
 echo ""
 
-for i in {0..19}; do # change 19 to 29 if you want 30 simulations
+for i in {0..29}; do # change 19 to 29 if you want 30 simulations
     SEED=${SEEDS[$i]}
     RUN_NUMBER=$((i + 1))
     

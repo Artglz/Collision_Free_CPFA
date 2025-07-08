@@ -350,6 +350,7 @@ bool CPFA_controller::CollisionDetection() {
 	if(GetStatus() == "FOLLOWING_EXIT_PATH") {
 		if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
 		&& collisionVector.Length() > 0.0) {
+			collision_counter++;
 		return true;
 		} else {
 			return false;
@@ -365,7 +366,7 @@ bool CPFA_controller::CollisionDetection() {
 		// 		Stop();
 		// 		return true;
 		// 	}
-
+			collision_counter++;
             stopcooldownCounter++; // Increment the stop counter
 			// argos::LOG << GetId() << " - Collision detected while following path." << std::endl;
             if (stopcooldownCounter > 30) {
