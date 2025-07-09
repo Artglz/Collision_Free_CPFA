@@ -288,6 +288,7 @@ bool CPFA_controller::CollisionDetection() {
 	if(GetStatus() == "FOLLOWING_EXIT_PATH"){
 		if (GoStraightAngleRangeInDegreesInRegion.WithinMinBoundIncludedMaxBoundIncluded(collisionAngle)
 		&& collisionVector.Length() > 0.0) {
+			collision_counter++;
 		return true;
 		} else {
 			return false;

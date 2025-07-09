@@ -93,6 +93,8 @@ void CPFA_qt_user_functions::DrawOnArena(CFloorEntity& entity) {
 	DrawCircleOnArena();
 
 	DrawPaths();
+    DrawParallelExitPaths();
+    DrawConnectingLines();
 	// DrawExitPath2();
 
 	if(loopFunctions.DrawTargetRays == 1) DrawTargetRays();
@@ -153,10 +155,10 @@ void CPFA_qt_user_functions::DrawExitPath2() {
 
 void CPFA_qt_user_functions::DrawPaths() {
     // Define colors for each path
-    CColor path1Color = CColor::RED;
-    CColor path2Color = CColor::RED;
-    CColor path3Color = CColor::RED;
-    CColor path4Color = CColor::RED;
+    CColor path1Color = CColor::BLUE;
+    CColor path2Color = CColor::BLUE;
+    CColor path3Color = CColor::BLUE;
+    CColor path4Color = CColor::BLUE;
 
     // Draw entryPath1
     for (size_t i = 0; i < entryPath1.size() - 1; ++i) {
@@ -187,6 +189,77 @@ void CPFA_qt_user_functions::DrawPaths() {
     }
 }
 
+void CPFA_qt_user_functions::DrawConnectingLines() {
+    // Define color for connecting lines
+    CColor connectingLineColor = CColor::GREEN;
+
+    // Helper function to draw a line between two points
+    auto drawLine = [&](const CVector2& start, const CVector2& end) {
+        CRay3 ray(CVector3(start.GetX(), start.GetY(), 0.01),
+                  CVector3(end.GetX(), end.GetY(), 0.01));
+        DrawRay(ray, connectingLineColor, 1.0);
+    };
+
+    // Draw line from last entryPoint1 to first exitPath1
+    if (!entryPath1.empty() && !exitPath1.empty()) {
+        drawLine(entryPath1.back(), {0.205, 0.135});
+    }
+
+    // Draw line from last entryPoint2 to first exitPath2
+    if (!entryPath2.empty() && !exitPath2.empty()) {
+        drawLine(entryPath2.back(), {-0.205, -0.135});
+    }
+
+    // Draw line from last entryPoint3 to first exitPath3
+    if (!entryPath3.empty() && !exitPath3.empty()) {
+        drawLine(entryPath3.back(), {-0.135, 0.205});
+    }
+
+    // Draw line from last entryPoint4 to first exitPath4
+    if (!entryPath4.empty() && !exitPath4.empty()) {
+        drawLine(entryPath4.back(), { 0.135, -0.205});
+    }
+}
+
+
+
+void CPFA_qt_user_functions::DrawParallelExitPaths() {
+    // Define offset for parallel lines
+    Real offset = 0.05;
+
+    // Define color for parallel lines
+    CColor parallelColor = CColor::GREEN;
+
+    // Helper function to calculate offset points
+    auto calculateOffsetPoint = [](const CVector2& point, const CVector2& direction, Real offset) {
+        CVector2 mutableDirection = direction; // Create a mutable copy
+        CVector2 normalizedDirection = mutableDirection.Normalize();
+        CVector2 perpendicular(-normalizedDirection.GetY(), normalizedDirection.GetX());
+        return point - perpendicular * offset; // Offset in the opposite direction
+    };
+
+    // Function to draw parallel lines for a given path
+    auto drawParallelLines = [&](const std::vector<CVector2>& path) {
+        for (size_t i = 0; i < path.size() - 1; ++i) {
+            CVector2 direction = path[i + 1] - path[i];
+            CVector2 offsetStart = calculateOffsetPoint(path[i], direction, offset);
+            CVector2 offsetEnd = calculateOffsetPoint(path[i + 1], direction, offset);
+
+            // Draw the parallel line
+            CRay3 ray(CVector3(offsetStart.GetX(), offsetStart.GetY(), 0.01),
+                      CVector3(offsetEnd.GetX(), offsetEnd.GetY(), 0.01));
+            DrawRay(ray, parallelColor, 1.0);
+        }
+    };
+
+    // Draw parallel lines for all exit paths
+    drawParallelLines(exitPath1);
+    drawParallelLines(exitPath2);
+    drawParallelLines(exitPath3);
+    drawParallelLines(exitPath4);
+}
+
+
 void CPFA_qt_user_functions::DrawCircleOnArena() {
     /* Define the center of the circle */
     Real x_coordinate = 0.0; // X-coordinate of the circle's center
@@ -200,7 +273,7 @@ void CPFA_qt_user_functions::DrawCircleOnArena() {
 
     DrawCircle(CVector3(x_coordinate, y_coordinate, elevation), CQuaternion(), radius, circleColor, false);
 
-    CColor xColor = CColor::BLUE;
+    CColor xColor = CColor::RED;
 
     /* Adjust the endpoints of the "X" to fit within the circle */
     Real diagonal_offset = radius * 0.7071; // sqrt(2)/2 ensures the endpoints lie within the circle
