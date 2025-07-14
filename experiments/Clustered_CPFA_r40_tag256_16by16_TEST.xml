@@ -144,7 +144,7 @@
   <!-- ****************** -->
   <!-- * Visualization * -->
   <!-- ****************** -->
-<!--  
+ 
 <visualization>
   <qt-opengl>
     <camera>
@@ -155,7 +155,7 @@
     <video output="output_video" frame_rate="12" quality="100" />
     <user_functions label="CPFA_qt_user_functions"/>
   </qt-opengl>
-</visualization> -->
+</visualization>
 <!--
  <visualization>
 
