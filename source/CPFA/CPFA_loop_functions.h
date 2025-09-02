@@ -10,13 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
-#include <algorithm> 
-// #include <json/json.h>
-
-#pragma push_macro("slots")
-#undef slots
-// #include "Python.h"
-#pragma pop_macro("slots")
+#include <algorithm>
 
 using namespace argos;
 using namespace std;
@@ -31,7 +25,6 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 	friend class CPFA_qt_user_functions;
 
 	public:
-		void UpdateInCircleCounter(size_t counter);
 		CPFA_loop_functions();
 		void Init(argos::TConfigurationNode &t_tree);
 		void Reset();
@@ -77,93 +70,8 @@ class CPFA_loop_functions : public argos::CLoopFunctions
 		double getRateOfSiteFidelity();
 		double getRateOfLayingPheromone();
 		double getRateOfPheromoneDecay();
-		// std::vector<argos::CVector2> entryPoints = {{2.5, 0}, {-2.5, 0}, {0, 2.5}, {0, -2.5}}; // entry point of the paths
-		// std::vector<argos::CVector2> entryPoints = {{2.0, 0}, {-2.0, 0}, {0, 2.0}, {0, -2.0}};
-		// std::vector<argos::CVector2> entryPoints = {    
-		// 	{2.0, 0.0}, {1.82, 0.35}, {1.57, 0.75}, {1.5, 0.70}, {1.5, 0.55},
-		// 	{1.5, 0.30}, {1.5, -0.15}, {1.5, -0.30}, {1.5, -0.55}, {1.5, -0.70},
-		// 	{1.35, -0.75}, {1.2, -0.65}, {1.2, -0.50}, {1.2, -0.35}, {1.2, -0.25},
-		// 	{1.2, -0.15}, {1.2, 0.0}, {1.2, 0.20}, {1.2, 0.50}, {1.05, 0.65},
-		// 	{0.9, 0.5}, {0.9, 0.25}, {0.9, 0.0}, {0.9, -0.22}, {0.80, -0.40},
-		// 	{0.7, -0.35}, {0.62, -0.27}, {0.4, -0.10}, {0.3, 0.0}	};
-		// std::vector<argos::CVector2> entryPoints = {
-		// 	{2.0, 0.0},
-		// 	{1.933, 0.167},
-		// 	{1.867, 0.333},
-		// 	{1.8, 0.5},
-		// 	{1.7, 0.6},
-		// 	{1.6, 0.7},
-		// 	{1.5, 0.8},
-		// 	{1.4, 0.733},
-		// 	{1.3, 0.667},
-		// 	{1.2, 0.6},
-		// 	{1.167, 0.467},
-		// 	{1.133, 0.333},
-		// 	{1.1, 0.2},
-		// 	{1.067, 0.067},
-		// 	{1.033, -0.067},
-		// 	{1.05, -0.2},
-		// 	{0.967, -0.267},
-		// 	{0.883, -0.333},
-		// 	{0.8, -0.4},
-		// 	{0.733, -0.333},
-		// 	{0.667, -0.267},
-		// 	{0.6, -0.2},
-		// 	{0.5, -0.133},
-		// 	{0.4, -0.067},
-		// 	{0.3, 0}
-		// };
-
-
-		// std::vector<argos::CVector2> entryPoints = {{}}
-		// std::vector<argos::CVector2> entryPoints = {{2.0, 0}};
-
-		// std::vector<argos::CVector2> entryPoints = {{2.0, 0}, {1.5, 0.0}, {1.5, -1.0}, {1.2, -1.0}, {1.2, 0.8}, {0.9, 0.6}, {0.9, -0.5}, {.3, 0}}; // entry point of the paths
-		// std::vector<argos::CVector2> exitPoints = {{0.3, 0.3},{-0.3, -0.3},{-0.3, 0.3}, {0.3, -0.3}}; // exit point of the paths
-		// std::vector<argos::CVector2> entryPoints = {{2.0, 0.0}, {1.3, -1.0}, {1.3, 1.0}, {0.95, 0.65}, {0.95, -0.65}, {.6, -0.3}, {.6, 0.3}, {.3, 0}}; // exit point of the paths
-		// std::vector<argos::CVector2> entryPoints = {			{2.0, 0.0}, {1.8, 0.32},
-		// {1.6, 0.58}, {1.6, 0.24}, {1.6, -0.04}, {1.6, -0.32}, {1.6, -0.9},
-		// {1.3, -0.75},
-		// {1.3, -0.6}, {1.3, -0.4}, {1.3, -0.2}, {1.3, 0.0},
-		// {1.3, 0.225}, {1.3, 0.45}, {1.3, 0.675}, {1.3, 0.9},
-		//  {0.95, 0.55},
-		// {0.95, 0.4125}, {0.95, 0.275}, {0.95, 0.1375}, {0.95, 0.0},
-		// {0.95, -0.1375}, {0.95, -0.275}, {0.95, -0.4125}, {0.95, -0.55}, {0.6, -0.2},
-		// {0.6, -0.1}, {0.6, 0.0}, {0.6, 0.1}, {0.6, 0.2},
-		// {0.525, 0.15}, {0.45, 0.1}, {0.375, 0.05}, {0.3, 0.0}};
-		// std::vector<argos::CVector2> entryPoints = {{1.6,  0.9}, {1.6, -0.9}, {1.5, -0.9}, {1.5,  0.9}, {1.4,  0.9}, {1.4, -0.9},
-		// {1.3, -0.9}, {1.3,  0.9}, {1.2, -0.9}, {1.2,  0.9}, {1.1,  0.9}, {1.1, -0.75},
-		// {1.0, -0.75}, {1.0,  0.7}, {0.9,  0.7}, {0.9, -0.55}, {0.8, -0.55}, {0.8,  0.45},
-		// {0.7,  0.45}, {0.7, -0.3}, {0.6, -0.3}, {0.6,  0.26}, {0.5,  0.26}, {0.5, -0.2},
-		// {0.4, -0.2}, {0.3,  0.0}};
-		std::vector<argos::CVector2> entryPoints = {	
-		// 	{ 1.60,  1.1}, { 1.60, -1.1},
-		// 	{ 1.40, -1.1}, { 1.40,  0.9},
-		// 	{ 1.20,  0.9}, { 1.20, -0.7},
-		// 	{ 1.00, -0.7}, { 1.00,  0.50},
-		// 	{ 0.80,  0.50}, { 0.80, -0.3},
-		// 	{ 0.60, -0.3}, { 0.60,  0.3},
-		// 	{ 0.30,  0.0}
-		};
-		// 	{2.0, 0.0}, 
-		// 	{1.8, 0.5}, 
-		// 	{1.5, 0.8}, 
-		// 	{1.2, 0.6}, 
-		// 	{1.1, 0.2},
-		// 	{1.05, -0.2},
-		// 	{0.8, -0.4},
-		// 	{0.6, -0.2}
-		// };
-		
-		//initialize 4 queues data type for each entry path
-		// std::queue<argos::CVector2> entryQueue1;
-		// std::queue<argos::CVector2> entryQueue2;
-		// std::queue<argos::CVector2> entryQueue3;
-		// std::queue<argos::CVector2> entryQueue4;
-
 
 	protected:
-		std::vector<size_t> InCircleCounters;
 		void setScore(double s);
 
 		argos::CRandom::CRNG* RNG;
